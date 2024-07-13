@@ -15,13 +15,11 @@
 
 #include "remote_control.h"
 
-/* 开发板类型定义,烧录时注意不要弄错对应功能;修改定义后需要重新编译,只能存在一个定义! */
-// #define ONE_BOARD // 单板控制整车
-#define CHASSIS_BOARD // 底盘板
-// #define GIMBAL_BOARD   // 云台板
-
 #define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
+
+#define RAD_2_DEGREE 57.2957795f    // 180/pi
+#define DEGREE_2_RAD 0.01745329252f // pi/180
 
 /* 机器人重要参数定义,注意根据不同机器人进行修改,浮点数需要以.0或f结尾,无符号以u结尾 */
 // 云台参数
@@ -35,23 +33,25 @@
 #define REDUCTION_RATIO_LOADER 49.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
 #define NUM_PER_CIRCLE 10            // 拨盘一圈的装载量
 // 机器人底盘修改的参数,单位为mm(毫米)
-#define WHEEL_BASE 350              // 纵向轴距(前进后退方向)
-#define TRACK_WIDTH 300             // 横向轮距(左右平移方向)
+#define WHEEL_BASE 350  // 纵向轴距(前进后退方向)
+#define TRACK_WIDTH 300 // 横向轮距(左右平移方向)
+#define RADIUS_WHEEL 60 // 轮子半径
+
+#define HALF_WHEEL_BASE (WHEEL_BASE / 2.0f)     // 半轴距
+#define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)   // 半轮距
+#define PERIMETER_WHEEL (RADIUS_WHEEL * 2 * PI) // 轮子周长
+#define LF_CENTER ((HALF_TRACK_WIDTH + CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE - CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
+#define RF_CENTER ((HALF_TRACK_WIDTH - CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE - CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
+#define LB_CENTER ((HALF_TRACK_WIDTH + CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE + CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
+#define RB_CENTER ((HALF_TRACK_WIDTH - CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE + CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
+
 #define CENTER_GIMBAL_OFFSET_X 0    // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 #define CENTER_GIMBAL_OFFSET_Y 0    // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
-#define RADIUS_WHEEL 60             // 轮子半径
-#define REDUCTION_RATIO_WHEEL 19.0f // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
+#define REDUCTION_RATIO_MOTOR 19.0f // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
 
 #define GYRO2GIMBAL_DIR_YAW 1   // 陀螺仪数据相较于云台的yaw的方向,1为相同,-1为相反
 #define GYRO2GIMBAL_DIR_PITCH 1 // 陀螺仪数据相较于云台的pitch的方向,1为相同,-1为相反
 #define GYRO2GIMBAL_DIR_ROLL 1  // 陀螺仪数据相较于云台的roll的方向,1为相同,-1为相反
-
-// 检查是否出现主控板定义冲突,只允许一个开发板定义存在,否则编译会自动报错
-#if (defined(ONE_BOARD) && defined(CHASSIS_BOARD)) || \
-    (defined(ONE_BOARD) && defined(GIMBAL_BOARD)) ||  \
-    (defined(CHASSIS_BOARD) && defined(GIMBAL_BOARD))
-#error Conflict board definition! You can only define one board type.
-#endif
 
 #pragma pack(1) // 压缩结构体,取消字节对齐,下面的数据都可能被传输
 /* -------------------------基本控制模式和数据类型定义-------------------------*/

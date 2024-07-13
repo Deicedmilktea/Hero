@@ -81,6 +81,7 @@ void exchange_task()
     else
     {
         VideoRead(video_data_recv.video_buff);
+        memset(&robot_ctrl.key_ctrl.rc, 0, sizeof(robot_ctrl.key_ctrl.rc)); // 清空遥控器数据
         robot_ctrl.key_ctrl.mouse.x = video_ctrl[0].key_data.mouse_x;
         robot_ctrl.key_ctrl.mouse.y = video_ctrl[0].key_data.mouse_y;
         robot_ctrl.key_ctrl.mouse.press_l = video_ctrl[0].key_data.left_button_down;
