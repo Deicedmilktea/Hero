@@ -10,9 +10,8 @@
 #define REMOTE_CONTROL_FRAME_SIZE 18u // 遥控器接收的buffer大小
 
 // 遥控器数据
-RC_ctrl_t rc_ctrl[2];         //[0]:当前数据TEMP,[1]:上一次的数据LAST.用于按键持续按下和切换的判断
+static RC_ctrl_t rc_ctrl[2];  //[0]:当前数据TEMP,[1]:上一次的数据LAST.用于按键持续按下和切换的判断
 uint8_t is_remote_online = 0; // 遥控器是否在线
-Robot_Control_Data_s robot_ctrl;
 
 static uint8_t rc_init_flag = 0; // 遥控器初始化标志位
 static uint8_t temp_remote[8];   // 临时存储发送数据
@@ -20,10 +19,6 @@ static uint8_t temp_remote[8];   // 临时存储发送数据
 // 遥控器拥有的串口实例,因为遥控器是单例,所以这里只有一个,就不封装了
 static USART_Instance *rc_usart_instance;
 static Daemon_Instance *rc_daemon_instance;
-
-static CANComm_Instance *remote_can_comm;     // remote通信CAN comm
-static Remote_Recv_Data_s remote_data_recv;   // remote接收到的信息
-static Remote_Upload_Data_s remote_data_send; // remote发送的信息
 
 /**
  * @brief 矫正遥控器摇杆的值,超过660或者小于-660的值都认为是无效值,置0
@@ -60,12 +55,6 @@ static void sbus_to_rc(const uint8_t *sbus_buf)
     rc_ctrl[TEMP].mouse.press_l = sbus_buf[12];                 //!< Mouse Left Is Press ?
     rc_ctrl[TEMP].mouse.press_r = sbus_buf[13];                 //!< Mouse Right Is Press ?
 
-    if (is_remote_online)
-    {
-        memcpy(&remote_data_send.remote_buff, sbus_buf, REMOTE_CONTROL_FRAME_SIZE);
-        CANCommSend(remote_can_comm, (void *)&remote_data_send);
-    }
-
     // 位域的按键值解算,直接memcpy即可,注意小端低字节在前,即lsb在第一位,msb在最后
     *(uint16_t *)&rc_ctrl[TEMP].key[KEY_PRESS] = (uint16_t)(sbus_buf[14] | (sbus_buf[15] << 8));
     if (rc_ctrl[TEMP].key[KEY_PRESS].ctrl) // ctrl键按下
@@ -98,7 +87,6 @@ static void sbus_to_rc(const uint8_t *sbus_buf)
         if ((key_with_shift & j) && !(key_last_with_shift & j))
             rc_ctrl[TEMP].key_count[KEY_PRESS_WITH_SHIFT][i]++;
     }
-    memcpy(&robot_ctrl.key_ctrl, &rc_ctrl[TEMP], sizeof(RC_ctrl_t));
     memcpy(&rc_ctrl[LAST], &rc_ctrl[TEMP], sizeof(RC_ctrl_t)); // 保存上一次的数据,用于按键持续按下和切换的判断
 }
 
@@ -131,17 +119,6 @@ RC_ctrl_t *RemoteControlInit(UART_HandleTypeDef *rc_usart_handle)
     conf.usart_handle = rc_usart_handle;
     conf.recv_buff_size = REMOTE_CONTROL_FRAME_SIZE;
     rc_usart_instance = USARTRegister(&conf);
-
-    CANComm_Init_Config_s remote_comm_conf = {
-        .can_config = {
-            .can_handle = &hcan1,
-            .tx_id = 0x312,
-            .rx_id = 0x311,
-        },
-        .recv_data_len = sizeof(Remote_Recv_Data_s),
-        .send_data_len = sizeof(Remote_Upload_Data_s),
-    };
-    remote_can_comm = CANCommInit(&remote_comm_conf); // can comm初始化
 
     // 进行守护进程的注册,用于定时检查遥控器是否正常工作
     Daemon_Init_Config_s daemon_conf = {

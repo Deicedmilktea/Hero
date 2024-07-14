@@ -123,6 +123,7 @@ typedef struct
     uint16_t checksum;     // crc16校验位 https://blog.csdn.net/ydyuse/article/details/105395368
     uint8_t tail;          // 尾帧校验位
 } Vision_Send_s;
+
 /* 视觉通信模块实例 */
 typedef struct
 {

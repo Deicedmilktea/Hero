@@ -16,12 +16,7 @@ static uint8_t is_init;
 static USART_Instance *video_usart_instance;
 static Daemon_Instance *video_daemon_instance;
 
-static CANComm_Instance *video_can_comm;    // remote通信CAN comm
-static Video_Recv_Data_s video_data_recv;   // video接收到的信息
-static Video_Upload_Data_s video_data_send; // video发送的信息
-
 extern uint8_t is_remote_online;
-extern Robot_Control_Data_s robot_ctrl;
 
 static void VideoDataContorl()
 {
@@ -89,19 +84,6 @@ static void VideoRead(uint8_t *buff)
                 {
                 case ID_remote_control_data: // 图传链路键鼠数据
                     memcpy(&video_ctrl[TEMP].key_data, (buff + DATA_Offset), LEN_remote_control_data);
-
-                    if (!is_remote_online)
-                    {
-                        memcpy(&video_data_send.video_buff, (buff + DATA_Offset), LEN_remote_control_data);
-                        CANCommSend(video_can_comm, (void *)&video_data_send);
-                        robot_ctrl.key_ctrl.mouse.x = video_ctrl[0].key_data.mouse_x;
-                        robot_ctrl.key_ctrl.mouse.y = video_ctrl[0].key_data.mouse_y;
-                        robot_ctrl.key_ctrl.mouse.press_l = video_ctrl[0].key_data.left_button_down;
-                        robot_ctrl.key_ctrl.mouse.press_r = video_ctrl[0].key_data.right_button_down;
-                        robot_ctrl.key_ctrl.key[3] = video_ctrl[0].key[3];
-                        robot_ctrl.key_ctrl.key_count[3][16] = video_ctrl[0].key_count[3][16];
-                    }
-
                     *(uint16_t *)&video_ctrl[TEMP].key[KEY_PRESS] = video_ctrl[TEMP].key_data.keyboard_value;
                     VideoDataContorl();
                     break;
@@ -143,17 +125,6 @@ Video_ctrl_t *VideoTransmitterControlInit(UART_HandleTypeDef *video_usart_handle
     conf.usart_handle = video_usart_handle;
     conf.recv_buff_size = RE_RX_BUFFER_SIZE;
     video_usart_instance = USARTRegister(&conf);
-
-    CANComm_Init_Config_s video_comm_conf = {
-        .can_config = {
-            .can_handle = &hcan1,
-            .tx_id = 0x322,
-            .rx_id = 0x321,
-        },
-        .recv_data_len = sizeof(Video_Recv_Data_s),
-        .send_data_len = sizeof(Video_Upload_Data_s),
-    };
-    video_can_comm = CANCommInit(&video_comm_conf); // can comm初始化
 
     Daemon_Init_Config_s daemon_conf = {
         .callback = VideoTransmitterLostCallback,
