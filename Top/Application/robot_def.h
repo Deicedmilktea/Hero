@@ -29,14 +29,18 @@
 #define YAW_CHASSIS_ALIGN_ECD 2711  // 云台和底盘对齐指向相同方向时的电机编码器值,若对云台有机械改动需要修改
 #define YAW_ECD_GREATER_THAN_4096 0 // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
 #define PITCH_HORIZON_ECD 3412      // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
-#define PITCH_MAX 0                 // 云台竖直方向最大角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
-#define PITCH_MIN 0                 // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
+#define PITCH_MAX 38                // 云台竖直方向最大角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
+#define PITCH_MIN -8                // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
 // 发射参数
-#define ONE_BULLET_DELTA_ANGLE 36    // 发射一发弹丸拨盘转动的距离,由机械设计图纸给出
-#define REDUCTION_RATIO_LOADER 49.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
-#define NUM_PER_CIRCLE 10            // 拨盘一圈的装载量
+#define ONE_BULLET_DELTA_ANGLE 60    // 发射一发弹丸拨盘转动的距离,由机械设计图纸给出
+#define REDUCTION_RATIO_LOADER 50.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
+#define NUM_PER_CIRCLE 6             // 拨盘一圈的装载量
 #define SHOOT_DELAY 1000             // 发射后的延迟时间,单位ms
 #define TRIGGER_SINGLE_ANGLE 1140    // 单发拨盘转动的角度,19*360/6=1140
+#define LENS_THRESHOLD_CURRENT 1500  // 判断lens阈值电流
+#define LENS_PREPARE_SPEED 1000      // lens准备阶段速度
+#define LENS_MOVE_ANGLE 1950         // lens移动角度
+#define VIDEO_MOVE_ANGLE 1400        // video移动角度
 // 机器人底盘修改的参数,单位为mm(毫米)
 #define WHEEL_BASE 350              // 纵向轴距(前进后退方向)
 #define TRACK_WIDTH 300             // 横向轮距(左右平移方向)
@@ -99,7 +103,7 @@ typedef enum
 
 typedef enum
 {
-    FRICTION_NORMAL, // 摩擦轮1档
+    FRICTION_NORMAL = 0, // 摩擦轮1档
     FRICTION_LOW,
     FRICTION_HIGH,
     FRICTION_STOP,
@@ -146,15 +150,15 @@ typedef enum
 
 typedef enum
 {
-    UI_KEEP = 0,
-    UI_REFRESH,
-} ui_mode_e;
+    LENS_MODE_SPEED = 0,
+    LENS_MODE_ANGLE,
+} lens_judge_mode_e;
 
 typedef enum
 {
-    TRIGGER_OFF = 0,
-    TRIGGER_ON,
-} trigger_speed_mode_e;
+    UI_KEEP = 0,
+    UI_REFRESH,
+} ui_mode_e;
 
 /* ----------------CMD应用发布的控制数据,应当由gimbal/chassis/shoot订阅---------------- */
 /**
@@ -192,8 +196,9 @@ typedef struct
 typedef struct
 {
     friction_mode_e friction_mode;
-    video_mode_e video_mode;
-    lens_mode_e lens_mode;
+    lens_judge_mode_e lens_judge_mode; // prepare
+    lens_mode_e lens_mode;             // lens
+    video_mode_e video_mode;           // video
 } Shoot_Ctrl_Cmd_s;
 
 /* ----------------gimbal/shoot/chassis发布的反馈数据----------------*/
@@ -205,20 +210,21 @@ typedef struct
 typedef struct
 {
     float chassis_ins_pitch;
-    float trigger_total_angle;
     uint8_t robot_level;
 } Chassis_Upload_Data_s;
 
 typedef struct
 {
-    attitude_t gimbal_imu_data;
+    attitude_t gimbal_ins;
     uint16_t yaw_angle;
 } Gimbal_Upload_Data_s;
 
 typedef struct
 {
-    // code to go here
-    // ...
+    int16_t lens_current;    // 开镜电机电流
+    float lens_total_angle;  // 开镜电机角度
+    int16_t video_current;   // 图传电机电流
+    float video_total_angle; // 图传电机角度
 } Shoot_Upload_Data_s;
 
 #pragma pack() // 开启字节对齐,结束前面的#pragma pack(1)

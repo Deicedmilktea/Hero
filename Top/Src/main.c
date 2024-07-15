@@ -121,9 +121,8 @@ int main(void)
   MX_CRC_Init();
   MX_DAC_Init();
   /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
   RobotInit(); // 唯一的初始化函数
+  /* USER CODE END 2 */
   /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
 

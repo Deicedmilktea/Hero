@@ -1,3 +1,6 @@
+#ifndef DEAMON_H
+#define DEAMON_H
+
 #include "stdint.h"
 #include "string.h"
 
@@ -55,3 +58,5 @@ uint8_t DaemonIsOnline(DaemonInstance *instance);
  *
  */
 void DaemonTask();
+
+#endif // !DEAMON_H

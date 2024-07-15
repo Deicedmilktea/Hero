@@ -49,10 +49,20 @@ static Shoot_Ctrl_Cmd_s shoot_cmd_send;      // 传递给发射的控制信息
 static Shoot_Upload_Data_s shoot_fetch_data; // 从发射获取的反馈信息
 
 static Robot_Status_e robot_state; // 机器人整体工作状态
+static uint8_t is_lens_ready = 0;  // 镜头到达指定位置
 extern uint8_t is_remote_online;   // 遥控器在线状态
 
 static int16_t chassis_speed_max;                                        // 底盘速度最大值
 static int16_t chassis_speed_buff[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; // 底盘速度缓冲区
+
+static void CalcOffsetAngle();   // 计算云台偏转角度
+static void RemoteControlSet();  // 遥控器控制
+static void RemoteMouseKeySet(); // 遥控器键鼠控制
+static void VideoMouseKeySet();  // 图传键鼠控制
+static void VisionControlSet();  // 视觉控制
+static void limit_gimbal();      // 云台限位
+static void lens_prepare();      // 镜头准备
+static void EmergencyHandler();  // 紧急处理
 
 void RobotCMDInit()
 {
@@ -97,6 +107,46 @@ void RobotCMDInit()
     robot_state = ROBOT_READY; // 启动时机器人进入工作模式,后续加入所有应用初始化完成之后再进入
 }
 
+/* 机器人核心控制任务,200Hz频率运行(必须高于视觉发送频率) */
+void RobotCMDTask()
+{
+    chassis_fetch_data = *(Chassis_Upload_Data_s *)CANCommGet(cmd_can_comm);
+
+    SubGetMessage(shoot_feed_sub, &shoot_fetch_data);
+    SubGetMessage(gimbal_feed_sub, &gimbal_fetch_data);
+
+    // 根据gimbal的反馈值计算云台和底盘正方向的夹角,不需要传参,通过static私有变量完成
+    CalcOffsetAngle();
+    // 遥控器链路
+    if (is_remote_online)
+    {
+        if (switch_is_down(rc_data[TEMP].rc.switch_right)) // 遥控器右侧开关状态为[下],遥控器控制
+            RemoteControlSet();
+        else if (switch_is_mid(rc_data[TEMP].rc.switch_right)) // 遥控器右侧开关状态为[上],键盘控制
+            RemoteMouseKeySet();
+        else if (switch_is_up(rc_data[TEMP].rc.switch_right)) // 遥控器右侧开关状态为[上],视觉模式
+            VisionControlSet();
+    }
+    else // 图传链路
+    {
+        VideoMouseKeySet();
+    }
+
+    EmergencyHandler(); // 处理模块离线和遥控器急停等紧急情况
+
+    // 设置视觉发送数据,还需增加加速度和角速度数据
+    // VisionSetFlag(chassis_fetch_data.enemy_color,,chassis_fetch_data.bullet_speed)
+
+    // 推送消息,双板通信,视觉通信等
+    // 其他应用所需的控制数据在remotecontrolsetmode和mousekeysetmode中完成设置
+
+    CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
+
+    PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
+    PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
+    VisionSend(&vision_send_data);
+}
+
 /**
  * @brief 根据gimbal app传回的当前电机角度计算和零位的误差
  *        单圈绝对角度的范围是0~360,说明文档中有图示
@@ -104,24 +154,12 @@ void RobotCMDInit()
  */
 static void CalcOffsetAngle()
 {
-    // 别名angle提高可读性,不然太长了不好看,虽然基本不会动这个函数
-    static float angle;
-    angle = gimbal_fetch_data.yaw_angle; // 从云台获取的当前yaw电机单圈角度
-#if YAW_ECD_GREATER_THAN_4096            // 如果大于180度
-    if (angle > YAW_ALIGN_ANGLE && angle <= 180.0f + YAW_ALIGN_ANGLE)
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-    else if (angle > 180.0f + YAW_ALIGN_ANGLE)
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE - 360.0f;
-    else
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-#else // 小于180度
-    if (angle > YAW_ALIGN_ANGLE)
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-    else if (angle <= YAW_ALIGN_ANGLE && angle >= YAW_ALIGN_ANGLE - 180.0f)
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE;
-    else
-        chassis_cmd_send.offset_angle = angle - YAW_ALIGN_ANGLE + 360.0f;
-#endif
+    float relative_angle = (gimbal_fetch_data.yaw_angle - YAW_ALIGN_ANGLE) * ECD_ANGLE_COEF_DJI;
+    if (relative_angle > 180)
+        relative_angle -= 360;
+    else if (relative_angle < -180)
+        relative_angle += 360;
+    chassis_cmd_send.offset_angle = relative_angle;
 }
 
 /**
@@ -134,13 +172,7 @@ static void RemoteControlSet()
     chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW;
 
     // 发射参数
-    chassis_cmd_send.loader_mode = LOAD_SPEED;
-    if (switch_is_down(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[下],停止发射
-    {
-        shoot_cmd_send.friction_mode = FRICTION_STOP;
-        chassis_cmd_send.loader_mode = LOAD_STOP;
-    }
-    else if (switch_is_mid(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[中],摩擦轮启动
+    if (switch_is_mid(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[中],摩擦轮启动
     {
         shoot_cmd_send.friction_mode = FRICTION_NORMAL;
         chassis_cmd_send.loader_mode = LOAD_STOP;
@@ -148,6 +180,11 @@ static void RemoteControlSet()
     else if (switch_is_up(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[上],发射
     {
         shoot_cmd_send.friction_mode = FRICTION_NORMAL;
+        chassis_cmd_send.loader_mode = LOAD_SPEED;
+    }
+    else // 左侧开关状态[下],停止发射
+    {
+        shoot_cmd_send.friction_mode = FRICTION_STOP;
         chassis_cmd_send.loader_mode = LOAD_STOP;
     }
 
@@ -157,8 +194,10 @@ static void RemoteControlSet()
     chassis_cmd_send.wz = 100.0f * (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI; // 旋转方向
 
     // 云台参数
-    gimbal_cmd_send.yaw += 0.005f * (float)rc_data[TEMP].rc.rocker_l_; // 系数待测
+    gimbal_cmd_send.yaw -= 0.001f * (float)rc_data[TEMP].rc.rocker_l_; // 系数待测
     gimbal_cmd_send.pitch += 0.001f * (float)rc_data[TEMP].rc.rocker_l1;
+
+    limit_gimbal(); // 云台限位
 }
 
 /**
@@ -167,6 +206,7 @@ static void RemoteControlSet()
  */
 static void RemoteMouseKeySet()
 {
+    // chassis，supcap
     switch (rc_data[TEMP].key_count[KEY_PRESS][Key_C] % 2)
     {
     case 1:
@@ -186,6 +226,18 @@ static void RemoteMouseKeySet()
     else
         chassis_cmd_send.wz = 100.0f * (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI; // 旋转方向
 
+    // F键控制底盘模式
+    switch (rc_data[TEMP].key_count[KEY_PRESS][Key_F] % 2)
+    {
+    case 1:
+        chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW; // normal
+        break;
+    default:
+        chassis_cmd_send.chassis_mode = CHASSIS_ZERO_FORCE; // stop
+        break;
+    }
+
+    // gimbal
     if (rc_data[TEMP].mouse.press_r && vision_recv_data->is_tracking) // 视觉
     {
         gimbal_cmd_send.yaw = vision_recv_data->yaw;
@@ -197,26 +249,7 @@ static void RemoteMouseKeySet()
         gimbal_cmd_send.pitch += (float)rc_data[TEMP].mouse.y / 660 * 10;
     }
 
-    if (gimbal_cmd_send.yaw > 180)
-        gimbal_cmd_send.yaw -= 360;
-    else if (gimbal_cmd_send.yaw < -180)
-        gimbal_cmd_send.yaw += 360;
-
-    if (gimbal_cmd_send.pitch > PITCH_MAX) // 软件限位
-        gimbal_cmd_send.pitch = PITCH_MAX;
-    else if (gimbal_cmd_send.pitch < PITCH_MIN)
-        gimbal_cmd_send.pitch = PITCH_MIN;
-
-    // F键控制底盘模式
-    switch (rc_data[TEMP].key_count[KEY_PRESS][Key_F] % 2)
-    {
-    case 1:
-        chassis_cmd_send.chassis_mode = CHASSIS_FOLLOW; // normal
-        break;
-    default:
-        chassis_cmd_send.chassis_mode = CHASSIS_ZERO_FORCE; // stop
-        break;
-    }
+    limit_gimbal();
 
     // Q键控制拨盘模式
     switch (rc_data[TEMP].key_count[KEY_PRESS][Key_Q] % 3)
@@ -285,6 +318,8 @@ static void RemoteMouseKeySet()
         break;
     }
 
+    lens_prepare();
+
     if (rc_data[TEMP].key[KEY_PRESS].x) // 刷新ui
         chassis_cmd_send.ui_mode = UI_REFRESH;
     else
@@ -297,7 +332,7 @@ static void RemoteMouseKeySet()
  */
 static void VideoMouseKeySet()
 {
-    // 开关超电
+    // chassis,supcap
     switch (video_data[TEMP].key_count[KEY_PRESS][Key_C] % 2)
     {
     case 1:
@@ -317,27 +352,6 @@ static void VideoMouseKeySet()
     else
         chassis_cmd_send.wz = 100.0f * (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI; // 旋转方向
 
-    if (video_data[TEMP].key_data.right_button_down && vision_recv_data->is_tracking) // 视觉
-    {
-        gimbal_cmd_send.yaw = vision_recv_data->yaw;
-        gimbal_cmd_send.pitch = vision_recv_data->pitch;
-    }
-    else
-    {
-        gimbal_cmd_send.yaw += (float)video_data[TEMP].key_data.mouse_x / 660 * 10; // 系数待测
-        gimbal_cmd_send.pitch += (float)video_data[TEMP].key_data.mouse_y / 660 * 10;
-    }
-
-    if (gimbal_cmd_send.yaw > 180)
-        gimbal_cmd_send.yaw -= 360;
-    else if (gimbal_cmd_send.yaw < -180)
-        gimbal_cmd_send.yaw += 360;
-
-    if (gimbal_cmd_send.pitch > PITCH_MAX) // 软件限位
-        gimbal_cmd_send.pitch = PITCH_MAX;
-    else if (gimbal_cmd_send.pitch < PITCH_MIN)
-        gimbal_cmd_send.pitch = PITCH_MIN;
-
     // F键控制底盘模式
     switch (video_data[TEMP].key_count[KEY_PRESS][Key_F] % 2)
     {
@@ -348,6 +362,19 @@ static void VideoMouseKeySet()
         chassis_cmd_send.chassis_mode = CHASSIS_ZERO_FORCE; // stop
         break;
     }
+
+    // gimbal
+    if (video_data[TEMP].key_data.right_button_down && vision_recv_data->is_tracking) // 视觉
+    {
+        gimbal_cmd_send.yaw = vision_recv_data->yaw;
+        gimbal_cmd_send.pitch = vision_recv_data->pitch;
+    }
+    else
+    {
+        gimbal_cmd_send.yaw += (float)video_data[TEMP].key_data.mouse_x / 660 * 10; // 系数待测
+        gimbal_cmd_send.pitch += (float)video_data[TEMP].key_data.mouse_y / 660 * 10;
+    }
+    limit_gimbal();
 
     // Q键控制拨盘模式
     switch (video_data[TEMP].key_count[KEY_PRESS][Key_Q] % 3)
@@ -416,6 +443,8 @@ static void VideoMouseKeySet()
         break;
     }
 
+    lens_prepare();
+
     if (video_data[TEMP].key[KEY_PRESS].x) // 刷新ui
         chassis_cmd_send.ui_mode = UI_REFRESH;
     else
@@ -462,6 +491,41 @@ static void VisionControlSet()
 }
 
 /**
+ * @brief gimbal软件限位,包括yaw和pitch
+ *
+ */
+static void limit_gimbal()
+{
+    // if (gimbal_cmd_send.yaw > 180)
+    //     gimbal_cmd_send.yaw -= 360;
+    // else if (gimbal_cmd_send.yaw < -180)
+    //     gimbal_cmd_send.yaw += 360;
+
+    if (gimbal_cmd_send.pitch > PITCH_MAX) // 软件限位
+        gimbal_cmd_send.pitch = PITCH_MAX;
+    else if (gimbal_cmd_send.pitch < PITCH_MIN)
+        gimbal_cmd_send.pitch = PITCH_MIN;
+}
+
+/**
+ * @brief 镜头准备,根据电流判断是否到达指定位置
+ *
+ */
+static void lens_prepare()
+{
+    if ((shoot_cmd_send.video_mode = VIDEO_NORMAL) && (shoot_cmd_send.lens_mode = LENS_OFF) && (!is_lens_ready))
+    {
+        shoot_cmd_send.lens_judge_mode = LENS_MODE_SPEED;
+
+        if (fabs(shoot_fetch_data.lens_current) > LENS_THRESHOLD_CURRENT && fabs(shoot_fetch_data.video_current) > LENS_THRESHOLD_CURRENT)
+        {
+            is_lens_ready = 1;
+            shoot_cmd_send.lens_judge_mode = LENS_MODE_ANGLE;
+        }
+    }
+}
+
+/**
  * @brief  紧急停止,包括遥控器左上侧拨轮打满/重要模块离线/双板通信失效等
  *         停止的阈值'300'待修改成合适的值,或改为开关控制.
  *
@@ -487,44 +551,4 @@ static void EmergencyHandler()
     //     shoot_cmd_send.shoot_mode = SHOOT_ON;
     //     LOGINFO("[CMD] reinstate, robot ready");
     // }
-}
-
-/* 机器人核心控制任务,200Hz频率运行(必须高于视觉发送频率) */
-void RobotCMDTask()
-{
-    chassis_fetch_data = *(Chassis_Upload_Data_s *)CANCommGet(cmd_can_comm);
-
-    SubGetMessage(shoot_feed_sub, &shoot_fetch_data);
-    SubGetMessage(gimbal_feed_sub, &gimbal_fetch_data);
-
-    // 根据gimbal的反馈值计算云台和底盘正方向的夹角,不需要传参,通过static私有变量完成
-    CalcOffsetAngle();
-    // 遥控器链路
-    if (is_remote_online)
-    {
-        if (switch_is_down(rc_data[TEMP].rc.switch_right)) // 遥控器右侧开关状态为[下],遥控器控制
-            RemoteControlSet();
-        else if (switch_is_mid(rc_data[TEMP].rc.switch_right)) // 遥控器右侧开关状态为[上],键盘控制
-            RemoteMouseKeySet();
-        else if (switch_is_up(rc_data[TEMP].rc.switch_right)) // 遥控器右侧开关状态为[上],视觉模式
-            VisionControlSet();
-    }
-    else // 图传链路
-    {
-        VideoMouseKeySet();
-    }
-
-    EmergencyHandler(); // 处理模块离线和遥控器急停等紧急情况
-
-    // 设置视觉发送数据,还需增加加速度和角速度数据
-    // VisionSetFlag(chassis_fetch_data.enemy_color,,chassis_fetch_data.bullet_speed)
-
-    // 推送消息,双板通信,视觉通信等
-    // 其他应用所需的控制数据在remotecontrolsetmode和mousekeysetmode中完成设置
-
-    CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
-
-    PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
-    PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
-    VisionSend(&vision_send_data);
 }
