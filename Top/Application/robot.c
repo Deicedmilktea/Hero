@@ -30,8 +30,8 @@ void RobotInit()
 
 #if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
     RobotCMDInit();
-    Gimbal_init();
-    // Shoot_init();
+    gimbal_init();
+    shoot_init();
 #endif
 
 #if defined(ONE_BOARD) || defined(CHASSIS_BOARD)
@@ -48,8 +48,8 @@ void RobotTask()
 {
 #if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
     RobotCMDTask();
-    Gimbal_task();
-    // Shoot_task();
+    gimbal_task();
+    shoot_task();
 #endif
 
 #if defined(ONE_BOARD) || defined(CHASSIS_BOARD)

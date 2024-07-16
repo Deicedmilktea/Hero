@@ -132,6 +132,8 @@ void RobotCMDTask()
         VideoMouseKeySet();
     }
 
+    lens_prepare(); // 镜头准备
+
     EmergencyHandler(); // 处理模块离线和遥控器急停等紧急情况
 
     // 设置视觉发送数据,还需增加加速度和角速度数据
@@ -189,9 +191,16 @@ static void RemoteControlSet()
     }
 
     // 底盘参数,目前没有加入小陀螺(调试似乎暂时没有必要),系数需要调整
-    chassis_cmd_send.vx = 10.0f * rc_data[TEMP].rc.rocker_r_;                                                  // _水平方向
-    chassis_cmd_send.vy = 10.0f * rc_data[TEMP].rc.rocker_r1;                                                  // 1数值方向
-    chassis_cmd_send.wz = 100.0f * (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI; // 旋转方向
+    chassis_cmd_send.vx = 10.0f * rc_data[TEMP].rc.rocker_r_; // _水平方向
+    chassis_cmd_send.vy = 10.0f * rc_data[TEMP].rc.rocker_r1; // 1数值方向
+    float offset_angle = chassis_cmd_send.offset_angle;
+    if (offset_angle > -5 && offset_angle < 5)
+        offset_angle = 0;
+    if (offset_angle > 180)
+        offset_angle -= 360;
+    else if (offset_angle < -180)
+        offset_angle += 360;
+    chassis_cmd_send.wz = 100.0f * offset_angle; // 旋转方向
 
     // 云台参数
     gimbal_cmd_send.yaw -= 0.001f * (float)rc_data[TEMP].rc.rocker_l_; // 系数待测
@@ -224,7 +233,16 @@ static void RemoteMouseKeySet()
     if (rc_data[TEMP].key[KEY_PRESS].shift) // 小陀螺
         chassis_cmd_send.wz = 24000;        // 待测
     else
-        chassis_cmd_send.wz = 100.0f * (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI; // 旋转方向
+    {
+        float offset_angle = chassis_cmd_send.offset_angle;
+        if (offset_angle > -5 && offset_angle < 5)
+            offset_angle = 0;
+        if (offset_angle > 180)
+            offset_angle -= 360;
+        else if (offset_angle < -180)
+            offset_angle += 360;
+        chassis_cmd_send.wz = 100.0f * offset_angle; // 旋转方向
+    }
 
     // F键控制底盘模式
     switch (rc_data[TEMP].key_count[KEY_PRESS][Key_F] % 2)
@@ -318,8 +336,6 @@ static void RemoteMouseKeySet()
         break;
     }
 
-    lens_prepare();
-
     if (rc_data[TEMP].key[KEY_PRESS].x) // 刷新ui
         chassis_cmd_send.ui_mode = UI_REFRESH;
     else
@@ -350,7 +366,16 @@ static void VideoMouseKeySet()
     if (video_data[TEMP].key[KEY_PRESS].shift) // 小陀螺
         chassis_cmd_send.wz = 24000;           // 待测
     else
-        chassis_cmd_send.wz = 100.0f * (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI; // 旋转方向
+    {
+        float offset_angle = chassis_cmd_send.offset_angle;
+        if (offset_angle > -5 && offset_angle < 5)
+            offset_angle = 0;
+        if (offset_angle > 180)
+            offset_angle -= 360;
+        else if (offset_angle < -180)
+            offset_angle += 360;
+        chassis_cmd_send.wz = 100.0f * offset_angle; // 旋转方向
+    }
 
     // F键控制底盘模式
     switch (video_data[TEMP].key_count[KEY_PRESS][Key_F] % 2)
@@ -443,8 +468,6 @@ static void VideoMouseKeySet()
         break;
     }
 
-    lens_prepare();
-
     if (video_data[TEMP].key[KEY_PRESS].x) // 刷新ui
         chassis_cmd_send.ui_mode = UI_REFRESH;
     else
@@ -496,11 +519,6 @@ static void VisionControlSet()
  */
 static void limit_gimbal()
 {
-    // if (gimbal_cmd_send.yaw > 180)
-    //     gimbal_cmd_send.yaw -= 360;
-    // else if (gimbal_cmd_send.yaw < -180)
-    //     gimbal_cmd_send.yaw += 360;
-
     if (gimbal_cmd_send.pitch > PITCH_MAX) // 软件限位
         gimbal_cmd_send.pitch = PITCH_MAX;
     else if (gimbal_cmd_send.pitch < PITCH_MIN)
@@ -513,7 +531,7 @@ static void limit_gimbal()
  */
 static void lens_prepare()
 {
-    if ((shoot_cmd_send.video_mode = VIDEO_NORMAL) && (shoot_cmd_send.lens_mode = LENS_OFF) && (!is_lens_ready))
+    if (!is_lens_ready)
     {
         shoot_cmd_send.lens_judge_mode = LENS_MODE_SPEED;
 
@@ -551,4 +569,16 @@ static void EmergencyHandler()
     //     shoot_cmd_send.shoot_mode = SHOOT_ON;
     //     LOGINFO("[CMD] reinstate, robot ready");
     // }
+
+    if (switch_is_up(rc_data[TEMP].rc.switch_right))
+    {
+        robot_state = ROBOT_STOP;
+        shoot_cmd_send.robot_status = ROBOT_STOP;
+        chassis_cmd_send.chassis_mode = CHASSIS_ZERO_FORCE;
+    }
+    else
+    {
+        robot_state = ROBOT_READY;
+        shoot_cmd_send.robot_status = ROBOT_READY;
+    }
 }

@@ -9,7 +9,7 @@
 #define FRICTION_SPEED_STOP 0
 #define FRICTION_UP_SPEED_STOP 0
 
-void Shoot_init(); // 初始化
-void Shoot_task();
+void shoot_init(); // 初始化
+void shoot_task();
 
 #endif

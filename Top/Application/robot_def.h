@@ -38,7 +38,7 @@
 #define SHOOT_DELAY 1000             // 发射后的延迟时间,单位ms
 #define TRIGGER_SINGLE_ANGLE 1140    // 单发拨盘转动的角度,19*360/6=1140
 #define LENS_THRESHOLD_CURRENT 1500  // 判断lens阈值电流
-#define LENS_PREPARE_SPEED 1000      // lens准备阶段速度
+#define LENS_PREPARE_SPEED 6000      // lens准备阶段速度
 #define LENS_MOVE_ANGLE 1950         // lens移动角度
 #define VIDEO_MOVE_ANGLE 1400        // video移动角度
 // 机器人底盘修改的参数,单位为mm(毫米)
@@ -199,6 +199,7 @@ typedef struct
     lens_judge_mode_e lens_judge_mode; // prepare
     lens_mode_e lens_mode;             // lens
     video_mode_e video_mode;           // video
+    Robot_Status_e robot_status;
 } Shoot_Ctrl_Cmd_s;
 
 /* ----------------gimbal/shoot/chassis发布的反馈数据----------------*/

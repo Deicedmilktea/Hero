@@ -20,7 +20,7 @@ static Subscriber_t *gimbal_sub;                  // cmd控制消息订阅者
 static Gimbal_Upload_Data_s gimbal_feedback_data; // 回传给cmd的云台状态信息
 static Gimbal_Ctrl_Cmd_s gimbal_cmd_recv;         // 来自cmd的控制信息
 
-void Gimbal_init()
+void gimbal_init()
 {
     gimbal_ins = INS_Init(); // IMU先初始化,获取姿态数据指针赋给yaw电机的其他数据来源
 
@@ -32,7 +32,7 @@ void Gimbal_init()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 10, // 8
+                .Kp = 8, // 8
                 .Ki = 0,
                 .Kd = 0,
                 .DeadBand = 0.1,
@@ -41,7 +41,7 @@ void Gimbal_init()
                 .MaxOut = 500,
             },
             .speed_PID = {
-                .Kp = 10, // 50
+                .Kp = 50, // 50
                 .Ki = 0,  // 200
                 .Kd = 0,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
@@ -57,7 +57,7 @@ void Gimbal_init()
             .speed_feedback_source = OTHER_FEED,
             .outer_loop_type = ANGLE_LOOP,
             .close_loop_type = ANGLE_LOOP | SPEED_LOOP,
-            .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
+            .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
         },
         .motor_type = GM6020};
 
@@ -77,9 +77,9 @@ void Gimbal_init()
                 .MaxOut = 500,
             },
             .speed_PID = {
-                .Kp = 50,  // 50
-                .Ki = 350, // 350
-                .Kd = 0,   // 0
+                .Kp = 50, // 50
+                .Ki = 0,  // 350
+                .Kd = 0,  // 0
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
                 .IntegralLimit = 2500,
                 .MaxOut = 20000,
@@ -106,14 +106,16 @@ void Gimbal_init()
 }
 
 // 云台运动task
-void Gimbal_task()
+void gimbal_task()
 {
     // 获取云台控制数据
     // 后续增加未收到数据的处理
     SubGetMessage(gimbal_sub, &gimbal_cmd_recv);
 
-    DJIMotorEnable(yaw_motor);
-    DJIMotorEnable(pitch_motor);
+    // DJIMotorEnable(yaw_motor);
+    // DJIMotorEnable(pitch_motor);
+    DJIMotorStop(yaw_motor);
+    DJIMotorStop(pitch_motor);
     DJIMotorChangeFeed(yaw_motor, ANGLE_LOOP, OTHER_FEED);
     DJIMotorChangeFeed(yaw_motor, SPEED_LOOP, OTHER_FEED);
     DJIMotorChangeFeed(pitch_motor, ANGLE_LOOP, OTHER_FEED);
@@ -124,7 +126,7 @@ void Gimbal_task()
 
     // 设置反馈数据,主要是imu和yaw的ecd
     gimbal_feedback_data.gimbal_ins = *gimbal_ins;
-    gimbal_feedback_data.yaw_angle = yaw_motor->measure.angle_single_round;
+    gimbal_feedback_data.yaw_angle = yaw_motor->measure.ecd;
 
     // 推送消息
     PubPushMessage(gimbal_pub, (void *)&gimbal_feedback_data);

@@ -17,6 +17,7 @@
 #include "can_comm.h"
 #include "supcap.h"
 
+#define LOADER_SPEED 12000
 #define LF_CENTER ((HALF_TRACK_WIDTH + CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE - CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
 #define RF_CENTER ((HALF_TRACK_WIDTH - CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE - CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
 #define LB_CENTER ((HALF_TRACK_WIDTH + CENTER_GIMBAL_OFFSET_X + HALF_WHEEL_BASE + CENTER_GIMBAL_OFFSET_Y) * DEGREE_2_RAD)
@@ -28,7 +29,7 @@ static Chassis_Ctrl_Cmd_s chassis_cmd_recv;         // 底盘接收到的控制�
 static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数据
 
 static DJIMotor_Instance *motor_lf, *motor_rf, *motor_lb, *motor_rb, *loader; // left right forward back
-static float chassis_vx, chassis_vy;                                          // 将云台系的速度投影到底盘
+static float chassis_vx, chassis_vy, chassis_wz;                              // 将云台系的速度投影到底盘
 static float vt_lf, vt_rf, vt_lb, vt_rb;                                      // 底盘速度解算后的临时输出,待进行限幅
 
 static Supcap_Instance *cap; // 超级电容
@@ -38,6 +39,9 @@ static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据�
 
 // dwt定时,计算冷却用
 static float hibernate_time = 0, dead_time = 0;
+float loadercur = 0;
+float loaderang = 0;
+float now_time = 0;
 
 static void MecanumCalculate();
 static void LimitChassisOutput();
@@ -103,32 +107,34 @@ void chassis_init()
         .controller_param_init_config = {
             .angle_PID = {
                 // 如果启用位置环来控制发弹,需要较大的I值保证输出力矩的线性度否则出现接近拨出的力矩大幅下降
-                .Kp = 0, // 10
+                .Kp = 100, // 10
                 .Ki = 0,
-                .Kd = 0,
-                .MaxOut = 200,
+                .Kd = 3,
+                .Improve = PID_Integral_Limit,
+                .IntegralLimit = 5000,
+                .MaxOut = 10000,
             },
             .speed_PID = {
-                .Kp = 0, // 10
-                .Ki = 0, // 1
+                .Kp = 10,  // 10
+                .Ki = 0.1, // 1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 5000,
-                .MaxOut = 5000,
+                .MaxOut = 10000,
             },
             .current_PID = {
-                .Kp = 0, // 0.7
+                .Kp = 1, // 0.7
                 .Ki = 0, // 0.1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 5000,
-                .MaxOut = 5000,
+                .MaxOut = 10000,
             },
         },
         .controller_setting_init_config = {
             .angle_feedback_source = MOTOR_FEED, .speed_feedback_source = MOTOR_FEED,
             .outer_loop_type = SPEED_LOOP, // 初始化成SPEED_LOOP,让拨盘停在原地,防止拨盘上电时乱转
-            .close_loop_type = CURRENT_LOOP | SPEED_LOOP | ANGLE_LOOP,
+            .close_loop_type = CURRENT_LOOP | SPEED_LOOP,
             .motor_reverse_flag = MOTOR_DIRECTION_NORMAL, // 注意方向设置为拨盘的拨出的击发方向
         },
         .motor_type = M3508 // 英雄使用m3508
@@ -145,7 +151,7 @@ void chassis_init()
 
     CANComm_Init_Config_s comm_conf = {
         .can_config = {
-            .can_handle = &hcan2,
+            .can_handle = &hcan1,
             .tx_id = 0x311,
             .rx_id = 0x312,
         },
@@ -179,11 +185,18 @@ void chassis_task()
     float sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
     chassis_vx = chassis_cmd_recv.vx * cos_theta - chassis_cmd_recv.vy * sin_theta;
     chassis_vy = chassis_cmd_recv.vx * sin_theta + chassis_cmd_recv.vy * cos_theta;
+    chassis_wz = chassis_cmd_recv.wz;
 
     MecanumCalculate();   // 计算底盘速度
     LimitChassisOutput(); // 限制底盘输出
 
-    // loader
+    chassis_feedback_data.chassis_ins_pitch = chassis_ins->Roll;
+    chassis_feedback_data.robot_level = referee_data->GameRobotState.robot_level;
+    CANCommSend(chasiss_can_comm, (uint8_t *)&chassis_feedback_data);
+
+    loadercur = loader->measure.real_current;
+    loaderang = loader->measure.total_angle;
+    now_time = DWT_GetTimeline_ms();
     if (hibernate_time + dead_time < DWT_GetTimeline_ms()) // 检测是否在休眠状态
     {
         // 若不在休眠状态,根据robotCMD传来的控制模式进行拨盘电机参考值设定和模式切换
@@ -191,35 +204,36 @@ void chassis_task()
         {
         // 停止拨盘
         case LOAD_STOP:
+            loader->motor_settings.close_loop_type = SPEED_LOOP | CURRENT_LOOP;
             DJIMotorOuterLoop(loader, SPEED_LOOP); // 切换到速度环
             DJIMotorSetRef(loader, 0);             // 同时设定参考值为0,这样停止的速度最快
             break;
         // 单发模式,根据鼠标按下的时间,触发一次之后需要进入不响应输入的状态(否则按下的时间内可能多次进入,导致多次发射)
         case LOAD_SINGLE:
+            loader->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
             DJIMotorOuterLoop(loader, ANGLE_LOOP);                                      // 切换到角度环
-            DJIMotorSetRef(loader, loader->measure.total_angle + TRIGGER_SINGLE_ANGLE); // 控制量增加一发弹丸的角度
+            DJIMotorSetRef(loader, loader->measure.total_angle - TRIGGER_SINGLE_ANGLE); // 控制量增加一发弹丸的角度
             hibernate_time = DWT_GetTimeline_ms();                                      // 记录触发指令的时间
             dead_time = 1000;                                                           // 完成1发弹丸发射的时间
             break;
         case LOAD_BUFF:
+            loader->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
             DJIMotorOuterLoop(loader, ANGLE_LOOP); // 切换到角度环
-            DJIMotorSetRef(loader, loader->measure.total_angle + TRIGGER_SINGLE_ANGLE);
+            DJIMotorSetRef(loader, loader->measure.total_angle - TRIGGER_SINGLE_ANGLE);
             hibernate_time = DWT_GetTimeline_ms();
             dead_time = 100;
         case LOAD_SPEED:
+            loader->motor_settings.close_loop_type = SPEED_LOOP | CURRENT_LOOP;
             DJIMotorOuterLoop(loader, SPEED_LOOP); // 切换到速度环
-            DJIMotorSetRef(loader, 1000);          // 正转
+            DJIMotorSetRef(loader, -LOADER_SPEED); // 正转
             break;
         case LOAD_REVERSE:
+            loader->motor_settings.close_loop_type = SPEED_LOOP | CURRENT_LOOP;
             DJIMotorOuterLoop(loader, SPEED_LOOP); // 切换到速度环
-            DJIMotorSetRef(loader, -1000);         // 反转
+            DJIMotorSetRef(loader, LOADER_SPEED);  // 反转
             break;
         }
     }
-
-    chassis_feedback_data.chassis_ins_pitch = chassis_ins->Roll;
-    chassis_feedback_data.robot_level = referee_data->GameRobotState.robot_level;
-    CANCommSend(chasiss_can_comm, (uint8_t *)&chassis_feedback_data);
 }
 
 /**
@@ -228,10 +242,10 @@ void chassis_task()
  */
 static void MecanumCalculate()
 {
-    vt_lf = -chassis_vx - chassis_vy - chassis_cmd_recv.wz * LF_CENTER;
-    vt_rf = -chassis_vx + chassis_vy - chassis_cmd_recv.wz * RF_CENTER;
-    vt_lb = chassis_vx - chassis_vy - chassis_cmd_recv.wz * LB_CENTER;
-    vt_rb = chassis_vx + chassis_vy - chassis_cmd_recv.wz * RB_CENTER;
+    vt_lf = -chassis_vx - chassis_vy - chassis_wz * LF_CENTER;
+    vt_rf = -chassis_vx + chassis_vy - chassis_wz * RF_CENTER;
+    vt_lb = chassis_vx - chassis_vy - chassis_wz * LB_CENTER;
+    vt_rb = chassis_vx + chassis_vy - chassis_wz * RB_CENTER;
 }
 
 /**

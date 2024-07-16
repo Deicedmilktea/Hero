@@ -1,7 +1,7 @@
 #ifndef GIMBAL_H
 #define GIMBAL_H
 
-void Gimbal_init(); // 初始化
-void Gimbal_task();
+void gimbal_init(); // 初始化
+void gimbal_task();
 
 #endif

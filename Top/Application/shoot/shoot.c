@@ -19,7 +19,10 @@ static Shoot_Ctrl_Cmd_s shoot_cmd_recv; // 来自cmd的发射控制信息
 static Subscriber_t *shoot_sub;
 static Shoot_Upload_Data_s shoot_feedback_data; // 来自cmd的发射控制信息
 
-void Shoot_init()
+static int16_t lens_init_angle = 0;
+static int16_t video_init_angle = 0;
+
+void shoot_init()
 {
     Motor_Init_Config_s friction_config = {
         .can_init_config = {
@@ -27,16 +30,16 @@ void Shoot_init()
         },
         .controller_param_init_config = {
             .speed_PID = {
-                .Kp = 0, // 20
-                .Ki = 0, // 1
+                .Kp = 20, // 20
+                .Ki = 1,  // 1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 10000,
                 .MaxOut = 15000,
             },
             .current_PID = {
-                .Kp = 0, // 0.7
-                .Ki = 0, // 0.1
+                .Kp = 0.7, // 0.7
+                .Ki = 0.1, // 0.1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 10000,
@@ -52,8 +55,9 @@ void Shoot_init()
             .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
         },
         .motor_type = M3508};
-    friction_config.can_init_config.tx_id = 1, // 左摩擦轮
-        friction_l = DJIMotorInit(&friction_config);
+    friction_config.can_init_config.tx_id = 1; // 左摩擦轮
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+    friction_l = DJIMotorInit(&friction_config);
 
     friction_config.can_init_config.tx_id = 2; // 右摩擦轮,改txid和方向就行
     friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
@@ -69,28 +73,28 @@ void Shoot_init()
         },
         .controller_param_init_config = {
             .speed_PID = {
-                .Kp = 0, // 20
-                .Ki = 0, // 1
+                .Kp = 20, // 20
+                .Ki = 0,  // 1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
-                .IntegralLimit = 10000,
-                .MaxOut = 15000,
+                .IntegralLimit = 2000,
+                .MaxOut = 2000,
             },
             .angle_PID = {
-                .Kp = 0, // 20
-                .Ki = 0, // 1
-                .Kd = 0,
+                .Kp = 20, // 20
+                .Ki = 0,  // 1
+                .Kd = 1,
                 .Improve = PID_Integral_Limit,
-                .IntegralLimit = 10000,
-                .MaxOut = 15000,
+                .IntegralLimit = 5000,
+                .MaxOut = 8000,
             },
             .current_PID = {
-                .Kp = 0, // 0.7
+                .Kp = 1, // 0.7
                 .Ki = 0, // 0.1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
-                .IntegralLimit = 10000,
-                .MaxOut = 15000,
+                .IntegralLimit = 4000,
+                .MaxOut = 8000,
             },
         },
         .controller_setting_init_config = {
@@ -98,27 +102,47 @@ void Shoot_init()
             .speed_feedback_source = MOTOR_FEED,
 
             .outer_loop_type = SPEED_LOOP,
-            .close_loop_type = SPEED_LOOP | ANGLE_LOOP | CURRENT_LOOP,
-            .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
+            .close_loop_type = SPEED_LOOP,
+            .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
         },
-        .motor_type = M3508};
+        .motor_type = M2006};
 
     lens_config.can_init_config.tx_id = 4; // 开镜电机
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     lens = DJIMotorInit(&lens_config);
 
     lens_config.can_init_config.tx_id = 5; // 图传上下
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     video = DJIMotorInit(&lens_config);
 
     shoot_pub = PubRegister("shoot_feed", sizeof(Shoot_Upload_Data_s));
     shoot_sub = SubRegister("shoot_cmd", sizeof(Shoot_Ctrl_Cmd_s));
 }
 
-void Shoot_task()
+void shoot_task()
 {
     // 从cmd获取控制数据
     SubGetMessage(shoot_sub, &shoot_cmd_recv);
+
+    if (shoot_cmd_recv.robot_status == ROBOT_STOP)
+    {
+        DJIMotorStop(friction_l);
+        DJIMotorStop(friction_r);
+        DJIMotorStop(friction_up);
+        DJIMotorStop(lens);
+        DJIMotorStop(video);
+    }
+    else
+    {
+        // DJIMotorEnable(friction_l);
+        // DJIMotorEnable(friction_r);
+        // DJIMotorEnable(friction_up);
+        // DJIMotorEnable(lens);
+        // DJIMotorEnable(video);
+        DJIMotorStop(friction_l);
+        DJIMotorStop(friction_r);
+        DJIMotorStop(friction_up);
+        DJIMotorStop(lens);
+        DJIMotorStop(video);
+    }
 
     switch (shoot_cmd_recv.friction_mode)
     {
@@ -148,19 +172,31 @@ void Shoot_task()
     {
         DJIMotorSetRef(lens, LENS_PREPARE_SPEED);
         DJIMotorSetRef(video, LENS_PREPARE_SPEED);
+
+        lens_init_angle = lens->measure.total_angle;
+        video_init_angle = video->measure.total_angle;
     }
     else
     {
+        lens->motor_settings.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+        video->motor_settings.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+        lens->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
+        video->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
         DJIMotorOuterLoop(lens, ANGLE_LOOP);
         DJIMotorOuterLoop(video, ANGLE_LOOP);
         if (shoot_cmd_recv.lens_mode == LENS_ON)
-            DJIMotorSetRef(lens, lens->measure.total_angle + LENS_MOVE_ANGLE);
+            DJIMotorSetRef(lens, lens_init_angle + LENS_MOVE_ANGLE);
         else
-            DJIMotorSetRef(lens, lens->measure.total_angle);
+            DJIMotorSetRef(lens, lens_init_angle);
 
         if (shoot_cmd_recv.video_mode == VIDEO_ADAPTIVE)
-            DJIMotorSetRef(video, video->measure.total_angle + VIDEO_MOVE_ANGLE);
+            DJIMotorSetRef(video, video_init_angle + VIDEO_MOVE_ANGLE);
         else
-            DJIMotorSetRef(video, video->measure.total_angle);
+            DJIMotorSetRef(video, video_init_angle);
     }
+
+    shoot_feedback_data.lens_current = lens->measure.real_current;
+    shoot_feedback_data.video_current = video->measure.real_current;
+
+    PubPushMessage(shoot_pub, (void *)&shoot_feedback_data);
 }

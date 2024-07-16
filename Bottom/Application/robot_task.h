@@ -41,18 +41,22 @@ void OSTaskInit()
     robotTaskHandle = osThreadCreate(osThread(robottask), NULL);
 }
 
+int is_ins_task_err = 0;
 __attribute__((noreturn)) void StartINSTASK(void const *argument)
 {
     static float ins_start;
     static float ins_dt;
     INS_Init(); // 确保BMI088被正确初始化
 
-    for (;;) {
+    for (;;)
+    {
         // 1kHz
         ins_start = DWT_GetTimeline_ms();
         INS_Task();
         ins_dt = DWT_GetTimeline_ms() - ins_start;
         // VisionSend(); // 解算完成后发送视觉数据,但是当前的实现不太优雅,后续若添加硬件触发需要重新考虑结构的组织
+        if (ins_dt > 1)
+            is_ins_task_err++;
         osDelay(1);
     }
 }
@@ -62,7 +66,8 @@ __attribute__((noreturn)) void StartMOTORTASK(void const *argument)
     static float motor_dt;
     static float motor_start;
 
-    for (;;) {
+    for (;;)
+    {
         motor_start = DWT_GetTimeline_ms();
         MotorControlTask();
         motor_dt = DWT_GetTimeline_ms() - motor_start;
@@ -74,7 +79,8 @@ __attribute__((noreturn)) void StartDAEMONTASK(void const *argument)
 {
     static float daemon_dt;
     static float daemon_start;
-    for (;;) {
+    for (;;)
+    {
         // 100Hz
         daemon_start = DWT_GetTimeline_ms();
         DaemonTask();
@@ -83,16 +89,21 @@ __attribute__((noreturn)) void StartDAEMONTASK(void const *argument)
     }
 }
 
+int is_robot_task_err = 0;
+
 __attribute__((noreturn)) void StartROBOTTASK(void const *argument)
 {
     static float robot_dt;
     static float robot_start;
 
     // 200Hz-500Hz,若有额外的控制任务如平衡步兵可能需要提升至1kHz
-    for (;;) {
+    for (;;)
+    {
         robot_start = DWT_GetTimeline_ms();
         RobotTask();
         robot_dt = DWT_GetTimeline_ms() - robot_start;
+        if (robot_dt > 5)
+            is_robot_task_err++;
         osDelay(5);
     }
 }
