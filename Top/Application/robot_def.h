@@ -175,7 +175,7 @@ typedef struct
     float offset_angle; // 底盘和归中位置的夹角
     chassis_mode_e chassis_mode;
     supcap_mode_e supcap_mode;
-    int chassis_speed_buff;
+    Robot_Status_e robot_status;
     // 拨盘控制
     loader_mode_e loader_mode;
     // UI部分
@@ -183,6 +183,8 @@ typedef struct
     loader_mode_e loader_ui_mode;
     video_mode_e video_mode;
     friction_mode_e friction_mode;
+    float pitch;
+    uint8_t is_tracking; // 视觉是否追踪
 } Chassis_Ctrl_Cmd_s;
 
 // cmd发布的云台控制数据,由gimbal订阅
@@ -190,6 +192,7 @@ typedef struct
 { // 云台角度控制
     float yaw;
     float pitch;
+    Robot_Status_e robot_status;
 } Gimbal_Ctrl_Cmd_s;
 
 // cmd发布的发射控制数据,由shoot订阅

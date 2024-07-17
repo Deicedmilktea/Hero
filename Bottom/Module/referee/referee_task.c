@@ -30,9 +30,6 @@ static referee_info_t *referee_recv_info;            // 接收到的裁判系统
 uint8_t UI_Seq;                                      // 包序号，供整个referee文件使用
 static uint8_t supercap_last_mode;                   // 上一次的超级电容模式
 
-extern uint8_t supercap_mode;
-// extern SupercapRxData_t SupercapRxData;
-
 // @todo 不应该使用全局变量
 
 /**
@@ -213,10 +210,15 @@ static void MyUIRefresh(referee_info_t *referee_recv_info, Referee_Interactive_i
         _Interactive_data->Referee_Interactive_Flag.friction_flag = 0;
     }
 
-    // trigger
+    // loader
     if (_Interactive_data->Referee_Interactive_Flag.shoot_flag == 1)
     {
-        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, _Interactive_data->shoot_mode == SHOOT_NORMAL ? "normal" : "buff  ");
+        if (_Interactive_data->loader_mode == LOAD_SPEED)
+            UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "speed");
+        else if (_Interactive_data->loader_mode == LOAD_BUFF)
+            UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "buff  ");
+        else
+            UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "normal");
         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
         _Interactive_data->Referee_Interactive_Flag.shoot_flag = 0;
     }
@@ -232,8 +234,8 @@ static void MyUIRefresh(referee_info_t *referee_recv_info, Referee_Interactive_i
     // supercap_power
     if (_Interactive_data->Referee_Interactive_Flag.Power_flag == 1)
     {
-        UIFloatDraw(&UI_Energy[1], "sd5", UI_Graph_Change, 8, UI_Color_Green, 18, 2, 3, 970, 210, _Interactive_data->Chassis_Power_Data.chassis_power_mx);
-        UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 722, 160, (uint32_t)722 + (_Interactive_data->Chassis_Power_Data.chassis_power_mx / 1000 - 9) * 17, 160);
+        UIFloatDraw(&UI_Energy[1], "sd5", UI_Graph_Change, 8, UI_Color_Green, 18, 2, 3, 970, 210, _Interactive_data->Supcap_Power_Data.Supcap_power);
+        UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 722, 160, (uint32_t)722 + (_Interactive_data->Supcap_Power_Data.Supcap_power / 1000 - 9) * 17, 160);
         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
         _Interactive_data->Referee_Interactive_Flag.Power_flag = 0;
     }
@@ -272,7 +274,6 @@ static void UIChangeCheck(Referee_Interactive_info_t *_Interactive_data)
     }
 
     // supercap开关
-    _Interactive_data->supcap_mode = supercap_mode;
     if (_Interactive_data->supcap_mode != _Interactive_data->supcap_last_mode)
     {
         _Interactive_data->Referee_Interactive_Flag.supcap_flag = 1;
@@ -287,10 +288,10 @@ static void UIChangeCheck(Referee_Interactive_info_t *_Interactive_data)
     }
 
     // 拨盘模式
-    if (_Interactive_data->shoot_mode != _Interactive_data->shoot_last_mode)
+    if (_Interactive_data->loader_mode != _Interactive_data->loader_last_mode)
     {
         _Interactive_data->Referee_Interactive_Flag.shoot_flag = 1;
-        _Interactive_data->shoot_last_mode = _Interactive_data->shoot_mode;
+        _Interactive_data->loader_last_mode = _Interactive_data->loader_mode;
     }
 
     // 图传模式
@@ -301,15 +302,13 @@ static void UIChangeCheck(Referee_Interactive_info_t *_Interactive_data)
     }
 
     // supercap数据
-    // _Interactive_data->Chassis_Power_Data.chassis_power_mx = SupercapRxData.voltage;
-    if (_Interactive_data->Chassis_Power_Data.chassis_power_mx != _Interactive_data->Chassis_last_Power_Data.chassis_power_mx)
+    if (_Interactive_data->Supcap_Power_Data.Supcap_power != _Interactive_data->Supcap_last_Power_Data.Supcap_power)
     {
         _Interactive_data->Referee_Interactive_Flag.Power_flag = 1;
-        _Interactive_data->Chassis_last_Power_Data.chassis_power_mx = _Interactive_data->Chassis_Power_Data.chassis_power_mx;
+        _Interactive_data->Supcap_last_Power_Data.Supcap_power = _Interactive_data->Supcap_Power_Data.Supcap_power;
     }
 
     // pitch
-    // _Interactive_data->pitch = robot_ctrl.top_pitch;
     if (_Interactive_data->pitch != _Interactive_data->pitch_last)
     {
         _Interactive_data->Referee_Interactive_Flag.pitch_flag = 1;
@@ -317,7 +316,6 @@ static void UIChangeCheck(Referee_Interactive_info_t *_Interactive_data)
     }
 
     // is_tracking
-    // _Interactive_data->is_tracking = robot_ctrl.vision_is_tracking;
     if (_Interactive_data->is_tracking != _Interactive_data->is_tracking_last)
     {
         _Interactive_data->Referee_Interactive_Flag.tracking_flag = 1;

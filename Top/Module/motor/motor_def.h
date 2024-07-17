@@ -27,7 +27,7 @@ typedef enum
     CURRENT_LOOP = 0b0001,
     SPEED_LOOP = 0b0010,
     ANGLE_LOOP = 0b0100,
-
+    TORQUE_LOOP = 0b1000,
     // only for checking
     SPEED_AND_CURRENT_LOOP = 0b0011,
     ANGLE_AND_SPEED_LOOP = 0b0110,
@@ -62,11 +62,38 @@ typedef enum
     FEEDBACK_DIRECTION_NORMAL = 0,
     FEEDBACK_DIRECTION_REVERSE = 1
 } Feedback_Reverse_Flag_e;
+
+/* 电机启停标志 */
 typedef enum
 {
     MOTOR_STOP = 0,
     MOTOR_ENABLED = 1,
 } Motor_Working_Type_e;
+
+/* 电机工作类型（达妙电机专用） */
+typedef enum
+{
+    MOTOR_CONTROL_MIT = 1,
+    MOTOR_CONTROL_POSITION_AND_SPEED,
+    MOTOR_CONTROL_SPEED,
+    MOTOR_CONTROL_E_MIT,
+    MOTOR_CONTROL_MIT_ONLY_TORQUE,
+} DMMotor_Controll_Type_e;
+
+/* LK电机工作类型 */
+typedef enum
+{
+    LK_SINGLE_MOTOR_TORQUE = 0,
+    LK_SINGLE_MOTOR_SPEED,
+    LK_MULTI_MOTOR,
+} LKMotor_Working_Type_e;
+
+/* 电机是否使用斜坡函数 */
+typedef enum
+{
+    MOTOR_RAMP_DISABLE = 0,
+    MOTOR_RAMP_ENABLE = 1,
+} Motor_Ramp_Flag_e;
 
 /* 电机控制设置,包括闭环类型,反转标志和反馈来源 */
 typedef struct
@@ -78,7 +105,8 @@ typedef struct
     Feedback_Source_e angle_feedback_source;       // 角度反馈类型
     Feedback_Source_e speed_feedback_source;       // 速度反馈类型
     Feedfoward_Type_e feedforward_flag;            // 前馈标志
-
+    Motor_Ramp_Flag_e angle_ramp_flag;             // 角度斜坡标志
+    Motor_Ramp_Flag_e speed_ramp_flag;             // 速度斜坡标志
 } Motor_Control_Setting_s;
 
 /* 电机控制器,包括其他来源的反馈数据指针,3环控制器和电机的参考输入*/
@@ -90,11 +118,14 @@ typedef struct
     float *speed_feedforward_ptr;
     float *current_feedforward_ptr;
 
-    PIDInstance current_PID;
-    PIDInstance speed_PID;
-    PIDInstance angle_PID;
+    PID_Instance current_PID;
+    PID_Instance speed_PID;
+    PID_Instance angle_PID;
 
     float pid_ref; // 将会作为每个环的输入和输出顺次通过串级闭环
+    float pid_speed_out;
+    float pid_angle_out;
+    float pid_out;
 } Motor_Controller_s;
 
 /* 电机类型枚举 */
@@ -105,7 +136,11 @@ typedef enum
     M3508,
     M2006,
     LK9025,
+    LK4010,
     HT04,
+    DM4310,
+    DM6006,
+    DM8006,
 } Motor_Type_e;
 
 /**
@@ -121,9 +156,15 @@ typedef struct
     float *speed_feedforward_ptr;   // 速度前馈数据指针
     float *current_feedforward_ptr; // 电流前馈数据指针
 
+    float pid_speed_out;
+    float pid_angle_out;
+    float pid_out;
+
+    PID_Init_Config_s torque_PID;
     PID_Init_Config_s current_PID;
     PID_Init_Config_s speed_PID;
     PID_Init_Config_s angle_PID;
+    PID_Init_Config_s dm_mit_PID;       // MIT模式下的PID
 } Motor_Controller_Init_s;
 
 /* 用于初始化CAN电机的结构体,各类电机通用 */
@@ -132,7 +173,9 @@ typedef struct
     Motor_Controller_Init_s controller_param_init_config;
     Motor_Control_Setting_s controller_setting_init_config;
     Motor_Type_e motor_type;
+    DMMotor_Controll_Type_e control_type;   // 电机工作类型,达妙电机专用
+    LKMotor_Working_Type_e motor_work_type; // LK电机工作类型，单电机或多电机
     CAN_Init_Config_s can_init_config;
 } Motor_Init_Config_s;
 
-#endif // !MOTOR_DEF_H
+#endif // MOTOR_DEF_H

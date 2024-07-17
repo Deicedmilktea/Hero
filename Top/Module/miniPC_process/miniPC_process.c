@@ -5,11 +5,7 @@
 #include "bsp_usb.h"
 #include "crc_ref.h"
 
-float vision_yaw = 0;
-float vision_pitch = 0;
-bool vision_is_tracking = false;
-
-static Vision_Instance *vision_instance;       // 用于和视觉通信的串口实例
+static Vision_Instance *vision_instance;        // 用于和视觉通信的串口实例
 static Daemon_Instance *vision_daemon_instance; // 用于判断视觉通信是否离线
 static uint8_t *vis_recv_buff __attribute__((unused));
 
@@ -45,10 +41,6 @@ static void DecodeVision(void)
     {
         // 读取视觉数据
         RecvProcess(vision_instance->recv_data, vision_instance->usart->recv_buff);
-
-        vision_is_tracking = vision_instance->recv_data->is_tracking;
-        vision_yaw = vision_instance->recv_data->yaw;
-        vision_pitch = vision_instance->recv_data->pitch;
     }
 #endif
 
@@ -57,10 +49,6 @@ static void DecodeVision(void)
     {
         // 读取视觉数据
         RecvProcess(vision_instance->recv_data, vis_recv_buff);
-
-        vision_is_tracking = vision_instance->recv_data->is_tracking;
-        vision_yaw = vision_instance->recv_data->yaw;
-        vision_pitch = vision_instance->recv_data->pitch;
     }
 #endif
 }

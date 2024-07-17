@@ -14,14 +14,14 @@
 /* ----------------------------下面是pid优化环节的实现---------------------------- */
 
 // 梯形积分
-static void f_Trapezoid_Intergral(PIDInstance *pid)
+static void f_Trapezoid_Intergral(PID_Instance *pid)
 {
     // 计算梯形的面积,(上底+下底)*高/2
     pid->ITerm = pid->Ki * ((pid->Err + pid->Last_Err) / 2) * pid->dt;
 }
 
 // 变速积分(误差小时积分作用更强)
-static void f_Changing_Integration_Rate(PIDInstance *pid)
+static void f_Changing_Integration_Rate(PID_Instance *pid)
 {
     if (pid->Err * pid->Iout > 0)
     {
@@ -35,7 +35,7 @@ static void f_Changing_Integration_Rate(PIDInstance *pid)
     }
 }
 
-static void f_Integral_Limit(PIDInstance *pid)
+static void f_Integral_Limit(PID_Instance *pid)
 {
     static float temp_Output, temp_Iout;
     temp_Iout = pid->Iout + pid->ITerm;
@@ -61,27 +61,27 @@ static void f_Integral_Limit(PIDInstance *pid)
 }
 
 // 微分先行(仅使用反馈值而不计参考输入的微分)
-static void f_Derivative_On_Measurement(PIDInstance *pid)
+static void f_Derivative_On_Measurement(PID_Instance *pid)
 {
     pid->Dout = pid->Kd * (pid->Last_Measure - pid->Measure) / pid->dt;
 }
 
 // 微分滤波(采集微分时,滤除高频噪声)
-static void f_Derivative_Filter(PIDInstance *pid)
+static void f_Derivative_Filter(PID_Instance *pid)
 {
     pid->Dout = pid->Dout * pid->dt / (pid->Derivative_LPF_RC + pid->dt) +
                 pid->Last_Dout * pid->Derivative_LPF_RC / (pid->Derivative_LPF_RC + pid->dt);
 }
 
 // 输出滤波
-static void f_Output_Filter(PIDInstance *pid)
+static void f_Output_Filter(PID_Instance *pid)
 {
     pid->Output = pid->Output * pid->dt / (pid->Output_LPF_RC + pid->dt) +
                   pid->Last_Output * pid->Output_LPF_RC / (pid->Output_LPF_RC + pid->dt);
 }
 
 // 输出限幅
-static void f_Output_Limit(PIDInstance *pid)
+static void f_Output_Limit(PID_Instance *pid)
 {
     if (pid->Output > pid->MaxOut)
     {
@@ -94,7 +94,7 @@ static void f_Output_Limit(PIDInstance *pid)
 }
 
 // 电机堵转检测
-static void f_PID_ErrorHandle(PIDInstance *pid)
+static void f_PID_ErrorHandle(PID_Instance *pid)
 {
     /*Motor Blocked Handle*/
     if (fabsf(pid->Output) < pid->MaxOut * 0.001f || fabsf(pid->Ref) < 0.0001f)
@@ -125,12 +125,12 @@ static void f_PID_ErrorHandle(PIDInstance *pid)
  * @param pid    PID实例
  * @param config PID初始化设置
  */
-void PIDInit(PIDInstance *pid, PID_Init_Config_s *config)
+void PIDInit(PID_Instance *pid, PID_Init_Config_s *config)
 {
     // config的数据和pid的部分数据是连续且相同的的,所以可以直接用memcpy
     // @todo: 不建议这样做,可扩展性差,不知道的开发者可能会误以为pid和config是同一个结构体
     // 后续修改为逐个赋值
-    memset(pid, 0, sizeof(PIDInstance));
+    memset(pid, 0, sizeof(PID_Instance));
     // utilize the quality of struct that its memeory is continuous
     memcpy(pid, config, sizeof(PID_Init_Config_s));
     // set rest of memory to 0
@@ -144,7 +144,7 @@ void PIDInit(PIDInstance *pid, PID_Init_Config_s *config)
  * @param[in]      期望值
  * @retval         返回空
  */
-float PIDCalculate(PIDInstance *pid, float measure, float ref)
+float PIDCalculate(PID_Instance *pid, float measure, float ref)
 {
     // 堵转检测
     if (pid->Improve & PID_ErrorHandle)

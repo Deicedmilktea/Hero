@@ -42,14 +42,14 @@
 #define LENS_MOVE_ANGLE 1950         // lens移动角度
 #define VIDEO_MOVE_ANGLE 1400        // video移动角度
 // 机器人底盘修改的参数,单位为mm(毫米)
-#define WHEEL_BASE 350                          // 纵向轴距(前进后退方向)
-#define TRACK_WIDTH 300                         // 横向轮距(左右平移方向)
+#define WHEEL_BASE 425                          // 纵向轴距(前进后退方向)
+#define TRACK_WIDTH 371                         // 横向轮距(左右平移方向)
+#define RADIUS_WHEEL 77                         // 轮子半径
 #define HALF_WHEEL_BASE (WHEEL_BASE / 2.0f)     // 半轴距
 #define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)   // 半轮距
 #define PERIMETER_WHEEL (RADIUS_WHEEL * 2 * PI) // 轮子周长
 #define CENTER_GIMBAL_OFFSET_X 0                // 云台旋转中心距底盘几何中心的距离,前后方向,云台位于正中心时默认设为0
 #define CENTER_GIMBAL_OFFSET_Y 0                // 云台旋转中心距底盘几何中心的距离,左右方向,云台位于正中心时默认设为0
-#define RADIUS_WHEEL 60                         // 轮子半径
 #define REDUCTION_RATIO_WHEEL 19.0f             // 电机减速比,因为编码器量测的是转子的速度而不是输出轴的速度故需进行转换
 
 #define GYRO2GIMBAL_DIR_YAW 1   // 陀螺仪数据相较于云台的yaw的方向,1为相同,-1为相反
@@ -130,8 +130,8 @@ typedef enum
 // 功率限制,从裁判系统获取,是否有必要保留?
 typedef struct
 { // 功率控制
-    float chassis_power_mx;
-} Chassis_Power_Data_s;
+    float Supcap_power;
+} Supcap_Power_Data_s;
 
 typedef enum
 {
@@ -178,7 +178,7 @@ typedef struct
     float offset_angle; // 底盘和归中位置的夹角
     chassis_mode_e chassis_mode;
     supcap_mode_e supcap_mode;
-    int chassis_speed_buff;
+    Robot_Status_e robot_status;
     // 拨盘控制
     loader_mode_e loader_mode;
     // UI部分
@@ -186,6 +186,8 @@ typedef struct
     loader_mode_e loader_ui_mode;
     video_mode_e video_mode;
     friction_mode_e friction_mode;
+    float pitch;
+    uint8_t is_tracking; // 视觉是否识别
 } Chassis_Ctrl_Cmd_s;
 
 // cmd发布的云台控制数据,由gimbal订阅

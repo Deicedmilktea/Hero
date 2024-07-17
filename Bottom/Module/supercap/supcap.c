@@ -10,18 +10,19 @@
  */
 
 #include "supcap.h"
+#include "string.h"
 
 static Supcap_Instance *super_cap_instance = NULL; // 可以由app保存此指针
 
 static void SuperCapRxCallback(CANInstance *_instance)
 {
     uint8_t *rxbuff;
-    Supcap_Msg_s *Msg;
+    SupercapRxData_s *rx_data;
     rxbuff = _instance->rx_buff;
-    Msg = &super_cap_instance->cap_msg;
-    Msg->vol = (uint16_t)(rxbuff[0] << 8 | rxbuff[1]);
-    Msg->current = (uint16_t)(rxbuff[2] << 8 | rxbuff[3]);
-    Msg->power = (uint16_t)(rxbuff[4] << 8 | rxbuff[5]);
+    rx_data = &super_cap_instance->cap_rx_data;
+    rx_data->voltage = (uint16_t)(rxbuff[0] << 8 | rxbuff[1]);
+    rx_data->power = (uint16_t)(rxbuff[2] << 8 | rxbuff[3]);
+    rx_data->state = rxbuff[4];
 }
 
 Supcap_Instance *Supcap_init(Supcap_Init_Config_s *supercap_config)
@@ -34,13 +35,32 @@ Supcap_Instance *Supcap_init(Supcap_Init_Config_s *supercap_config)
     return super_cap_instance;
 }
 
-void SupcapSend(Supcap_Instance *instance, uint8_t *data)
+/**
+ * @brief
+ *
+ * @param buffer 缓冲能量
+ * @param power 底盘功率
+ * @param state 超电设定状态
+ */
+void SupcapSetData(uint16_t buffer, uint16_t power, uint8_t state)
 {
-    memcpy(instance->can_ins->tx_buff, data, 8);
-    CANTransmit(instance->can_ins, 1);
+    super_cap_instance->cap_tx_data.buffer = buffer;
+    super_cap_instance->cap_tx_data.power = power;
+    super_cap_instance->cap_tx_data.state = state;
 }
 
-Supcap_Msg_s SuperCapGet(Supcap_Instance *instance)
+void SupcapSend()
 {
-    return instance->cap_msg;
+    uint8_t data[5];
+    memcpy(&data[0], &super_cap_instance->cap_tx_data.buffer, 2);
+    memcpy(&data[2], &super_cap_instance->cap_tx_data.power, 2);
+    data[4] = super_cap_instance->cap_tx_data.state;
+
+    memcpy(super_cap_instance->can_ins->tx_buff, data, 5);
+    CANTransmit(super_cap_instance->can_ins, 1);
+}
+
+SupercapRxData_s SuperCapGet(Supcap_Instance *instance)
+{
+    return instance->cap_rx_data;
 }

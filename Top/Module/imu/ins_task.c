@@ -22,7 +22,7 @@
 
 static INS_t INS;
 static IMU_Param_t IMU_Param;
-static PIDInstance TempCtrl = {0};
+static PID_Instance TempCtrl = {0};
 
 const float xb[3] = {1, 0, 0};
 const float yb[3] = {0, 1, 0};

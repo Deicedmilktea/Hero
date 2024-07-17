@@ -94,7 +94,7 @@ typedef struct
     float dt;
 
     PID_ErrorHandler_t ERRORHandler;
-} PIDInstance;
+} PID_Instance;
 
 /* 用于PID初始化的结构体*/
 typedef struct // config parameter
@@ -121,7 +121,7 @@ typedef struct // config parameter
  * @param pid    PID实例指针
  * @param config PID初始化配置
  */
-void PIDInit(PIDInstance *pid, PID_Init_Config_s *config);
+void PIDInit(PID_Instance *pid, PID_Init_Config_s *config);
 
 /**
  * @brief 计算PID输出
@@ -131,6 +131,6 @@ void PIDInit(PIDInstance *pid, PID_Init_Config_s *config);
  * @param ref     设定值
  * @return float  PID计算输出
  */
-float PIDCalculate(PIDInstance *pid, float measure, float ref);
+float PIDCalculate(PID_Instance *pid, float measure, float ref);
 
 #endif

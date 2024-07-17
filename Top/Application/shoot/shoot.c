@@ -103,7 +103,7 @@ void shoot_init()
 
             .outer_loop_type = SPEED_LOOP,
             .close_loop_type = SPEED_LOOP,
-            .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
+            .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
         },
         .motor_type = M2006};
 
@@ -170,20 +170,18 @@ void shoot_task()
 
     if (shoot_cmd_recv.lens_judge_mode == LENS_MODE_SPEED)
     {
-        DJIMotorSetRef(lens, LENS_PREPARE_SPEED);
-        DJIMotorSetRef(video, LENS_PREPARE_SPEED);
+        DJIMotorSetRef(lens, -LENS_PREPARE_SPEED);
+        DJIMotorSetRef(video, -LENS_PREPARE_SPEED);
 
         lens_init_angle = lens->measure.total_angle;
         video_init_angle = video->measure.total_angle;
     }
     else
     {
-        lens->motor_settings.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
-        video->motor_settings.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
-        lens->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
-        video->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
         DJIMotorOuterLoop(lens, ANGLE_LOOP);
         DJIMotorOuterLoop(video, ANGLE_LOOP);
+        lens->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
+        video->motor_settings.close_loop_type = ANGLE_LOOP | CURRENT_LOOP;
         if (shoot_cmd_recv.lens_mode == LENS_ON)
             DJIMotorSetRef(lens, lens_init_angle + LENS_MOVE_ANGLE);
         else

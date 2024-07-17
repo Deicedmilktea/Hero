@@ -36,7 +36,6 @@ static Chassis_Upload_Data_s chassis_fetch_data; // 从底盘应用接收的反�
 static RC_ctrl_t *rc_data;              // 遥控器数据,初始化时返回
 static Video_ctrl_t *video_data;        // 图传数据,初始化时返回
 static Vision_Recv_s *vision_recv_data; // 视觉接收数据指针,初始化时返回
-static Vision_Send_s vision_send_data;  // 视觉发送数据
 
 static Publisher_t *gimbal_cmd_pub;            // 云台控制消息发布者
 static Subscriber_t *gimbal_feed_sub;          // 云台反馈信息订阅者
@@ -52,8 +51,10 @@ static Robot_Status_e robot_state; // 机器人整体工作状态
 static uint8_t is_lens_ready = 0;  // 镜头到达指定位置
 extern uint8_t is_remote_online;   // 遥控器在线状态
 
-static int16_t chassis_speed_max;                                        // 底盘速度最大值
-static int16_t chassis_speed_buff[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}; // 底盘速度缓冲区
+static int32_t chassis_speed_max;                                                                               // 底盘速度最大值
+static int32_t chassis_speed_buff[10] = {30000, 33000, 36000, 39000, 45000, 51000, 54000, 60000, 66000, 72000}; // 底盘速度缓冲区
+static int16_t chassis_wz_max;
+static int16_t chassis_wz_buff[2] = {24000, 36000}; // 底盘旋转速度缓冲区
 
 static void CalcOffsetAngle();   // 计算云台偏转角度
 static void RemoteControlSet();  // 遥控器控制
@@ -137,16 +138,16 @@ void RobotCMDTask()
     EmergencyHandler(); // 处理模块离线和遥控器急停等紧急情况
 
     // 设置视觉发送数据,还需增加加速度和角速度数据
-    // VisionSetFlag(chassis_fetch_data.enemy_color,,chassis_fetch_data.bullet_speed)
+    VisionSetAltitude(gimbal_fetch_data.gimbal_ins.Yaw, gimbal_fetch_data.gimbal_ins.Roll, gimbal_fetch_data.gimbal_ins.Pitch);
 
     // 推送消息,双板通信,视觉通信等
     // 其他应用所需的控制数据在remotecontrolsetmode和mousekeysetmode中完成设置
-
+    chassis_cmd_send.pitch = gimbal_fetch_data.gimbal_ins.Roll;
     CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
 
     PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
     PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
-    VisionSend(&vision_send_data);
+    VisionSend();
 }
 
 /**
@@ -230,8 +231,9 @@ static void RemoteMouseKeySet()
 
     chassis_cmd_send.vx = (rc_data[TEMP].key[KEY_PRESS].d - rc_data[TEMP].key[KEY_PRESS].a) * chassis_speed_max; // 系数待测
     chassis_cmd_send.vy = (rc_data[TEMP].key[KEY_PRESS].w - rc_data[TEMP].key[KEY_PRESS].s) * chassis_speed_max;
-    if (rc_data[TEMP].key[KEY_PRESS].shift) // 小陀螺
-        chassis_cmd_send.wz = 24000;        // 待测
+    chassis_wz_max = (chassis_fetch_data.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
+    if (rc_data[TEMP].key[KEY_PRESS].shift)   // 小陀螺
+        chassis_cmd_send.wz = chassis_wz_max; // 待测
     else
     {
         float offset_angle = chassis_cmd_send.offset_angle;
@@ -363,8 +365,9 @@ static void VideoMouseKeySet()
 
     chassis_cmd_send.vx = (video_data[TEMP].key[KEY_PRESS].d - video_data[TEMP].key[KEY_PRESS].a) * chassis_speed_max; // 系数待测
     chassis_cmd_send.vy = (video_data[TEMP].key[KEY_PRESS].w - video_data[TEMP].key[KEY_PRESS].s) * chassis_speed_max;
+    chassis_wz_max = (chassis_fetch_data.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
     if (video_data[TEMP].key[KEY_PRESS].shift) // 小陀螺
-        chassis_cmd_send.wz = 24000;           // 待测
+        chassis_cmd_send.wz = chassis_wz_max;  // 待测
     else
     {
         float offset_angle = chassis_cmd_send.offset_angle;
@@ -552,33 +555,18 @@ static void lens_prepare()
  */
 static void EmergencyHandler()
 {
-    // // 拨轮的向下拨超过一半进入急停模式.注意向打时下拨轮是正
-    // if (rc_data[TEMP].rc.dial > 300 || robot_state == ROBOT_STOP) // 还需添加重要应用和模块离线的判断
-    // {
-    //     robot_state = ROBOT_STOP;
-    //     gimbal_cmd_send.gimbal_mode = GIMBAL_ZERO_FORCE;
-    //     chassis_cmd_send.chassis_mode = CHASSIS_ZERO_FORCE;
-    //     shoot_cmd_send.shoot_mode = SHOOT_OFF;
-    //     shoot_cmd_send.friction_mode = FRICTION_OFF;
-    //     shoot_cmd_send.load_mode = LOAD_STOP;
-    // }
-    // // 遥控器右侧开关为[上],恢复正常运行
-    // if (switch_is_up(rc_data[TEMP].rc.switch_right))
-    // {
-    //     robot_state = ROBOT_READY;
-    //     shoot_cmd_send.shoot_mode = SHOOT_ON;
-    //     LOGINFO("[CMD] reinstate, robot ready");
-    // }
-
     if (switch_is_up(rc_data[TEMP].rc.switch_right))
     {
         robot_state = ROBOT_STOP;
         shoot_cmd_send.robot_status = ROBOT_STOP;
-        chassis_cmd_send.chassis_mode = CHASSIS_ZERO_FORCE;
+        gimbal_cmd_send.robot_status = ROBOT_STOP;
+        chassis_cmd_send.robot_status = ROBOT_STOP;
     }
     else
     {
         robot_state = ROBOT_READY;
         shoot_cmd_send.robot_status = ROBOT_READY;
+        gimbal_cmd_send.robot_status = ROBOT_READY;
+        chassis_cmd_send.robot_status = ROBOT_READY;
     }
 }

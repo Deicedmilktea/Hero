@@ -52,7 +52,7 @@ typedef struct
     Motor_Control_Setting_s motor_settings; // 电机设置
     Motor_Controller_s motor_controller;    // 电机控制器
 
-    CANInstance *motor_can_instance; // 电机CAN实例
+    CAN_Instance *motor_can_instance; // 电机CAN实例
     // 分组发送设置
     uint8_t sender_group;
     uint8_t message_num;

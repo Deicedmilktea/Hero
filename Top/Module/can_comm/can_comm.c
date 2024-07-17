@@ -22,7 +22,7 @@ static void CANCommResetRx(CANComm_Instance *ins)
  *
  * @param _instance
  */
-static void CANCommRxCallback(CANInstance *_instance)
+static void CANCommRxCallback(CAN_Instance *_instance)
 {
     CANComm_Instance *comm = (CANComm_Instance *)_instance->id; // 注意写法,将can instance的id强制转换为CANCommInstance*类型
 

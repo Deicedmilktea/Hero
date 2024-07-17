@@ -25,7 +25,7 @@
 /* CAN comm 结构体, 拥有CAN comm的app应该包含一个CAN comm指针 */
 typedef struct
 {
-    CANInstance *can_ins;
+    CAN_Instance *can_ins;
     /* 发送部分 */
     uint8_t send_data_len;                                              // 发送数据长度
     uint8_t send_buf_len;                                               // 发送缓冲区长度,为发送数据长度+帧头单包数据长度帧尾以及校验和(4)

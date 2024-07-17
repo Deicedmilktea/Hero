@@ -7,7 +7,7 @@
 /* can instance ptrs storage, used for recv callback */
 // 在CAN产生接收中断会遍历数组,选出hcan和rxid与发生中断的实例相同的那个,调用其回调函数
 // @todo: 后续为每个CAN总线单独添加一个can_instance指针数组,提高回调查找的性能
-static CANInstance *can_instance[CAN_MX_REGISTER_CNT] = {NULL};
+static CAN_Instance *can_instance[CAN_MX_REGISTER_CNT] = {NULL};
 static uint8_t idx; // 全局CAN实例索引,每次有新的模块注册会自增
 
 /* ----------------two static function called by CANRegister()-------------------- */
@@ -25,7 +25,7 @@ static uint8_t idx; // 全局CAN实例索引,每次有新的模块注册会自�
  *
  * @param _instance can instance owned by specific module
  */
-static void CANAddFilter(CANInstance *_instance)
+static void CANAddFilter(CAN_Instance *_instance)
 {
     CAN_FilterTypeDef can_filter_conf;
     static uint8_t can1_filter_idx = 0, can2_filter_idx = 14; // 0-13给can1用,14-27给can2用
@@ -59,7 +59,7 @@ static void CANServiceInit()
 
 /* ----------------------- two extern callable function -----------------------*/
 
-CANInstance *CANRegister(CAN_Init_Config_s *config)
+CAN_Instance *CANRegister(CAN_Init_Config_s *config)
 {
     if (!idx) {
         CANServiceInit(); // 第一次注册,先进行硬件初始化
@@ -74,8 +74,8 @@ CANInstance *CANRegister(CAN_Init_Config_s *config)
         }
     }
 
-    CANInstance *instance = (CANInstance *)malloc(sizeof(CANInstance)); // 分配空间
-    memset(instance, 0, sizeof(CANInstance));                           // 分配的空间未必是0,所以要先清空
+    CAN_Instance *instance = (CAN_Instance *)malloc(sizeof(CAN_Instance)); // 分配空间
+    memset(instance, 0, sizeof(CAN_Instance));                           // 分配的空间未必是0,所以要先清空
     // 进行发送报文的配置
     instance->txconf.StdId = config->tx_id; // 发送id
     instance->txconf.IDE   = CAN_ID_STD;    // 使用标准id,扩展id则使用CAN_ID_EXT(目前没有需求)
@@ -96,7 +96,7 @@ CANInstance *CANRegister(CAN_Init_Config_s *config)
 
 /* @todo 目前似乎封装过度,应该添加一个指向tx_buff的指针,tx_buff不应该由CAN instance保存 */
 /* 如果让CANinstance保存txbuff,会增加一次复制的开销 */
-uint8_t CANTransmit(CANInstance *_instance, float timeout)
+uint8_t CANTransmit(CAN_Instance *_instance, float timeout)
 {
     static uint32_t busy_count;
     static volatile float wait_time __attribute__((unused)); // for cancel warning
@@ -118,7 +118,7 @@ uint8_t CANTransmit(CANInstance *_instance, float timeout)
     return 1; // 发送成功
 }
 
-void CANSetDLC(CANInstance *_instance, uint8_t length)
+void CANSetDLC(CAN_Instance *_instance, uint8_t length)
 {
     // 发送长度错误!检查调用参数是否出错,或出现野指针/越界访问
     if (length > 8 || length == 0) // 安全检查
