@@ -204,7 +204,7 @@ static void RemoteControlSet()
     chassis_cmd_send.wz = 100.0f * offset_angle; // 旋转方向
 
     // 云台参数
-    gimbal_cmd_send.yaw -= 0.001f * (float)rc_data[TEMP].rc.rocker_l_; // 系数待测
+    gimbal_cmd_send.yaw -= 0.002f * (float)rc_data[TEMP].rc.rocker_l_; // 系数待测
     gimbal_cmd_send.pitch += 0.001f * (float)rc_data[TEMP].rc.rocker_l1;
 
     limit_gimbal(); // 云台限位

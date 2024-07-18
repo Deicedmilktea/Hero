@@ -210,8 +210,11 @@ void chassis_task()
     // now_time = DWT_GetTimeline_ms();
     loader_task();
 
-    SupcapSetData(referee_data->PowerHeatData.buffer_energy, referee_data->PowerHeatData.chassis_power, 0); // 超级电容数据设置
-    SupcapSend();                                                                                           // 超级电容数据发送
+    if (chassis_cmd_recv.supcap_mode == SUPCAP_ON)
+        SupcapSetData(referee_data->PowerHeatData.buffer_energy, referee_data->PowerHeatData.chassis_power, SUPCAP_ON); // 超级电容数据设置
+    else
+        SupcapSetData(referee_data->PowerHeatData.buffer_energy, referee_data->PowerHeatData.chassis_power, SUPCAP_OFF); // 超级电容数据设置
+    SupcapSend();                                                                                                        // 超级电容数据发送
 
     chassis_feedback_data.chassis_ins_pitch = chassis_ins->Roll;
     chassis_feedback_data.robot_level = referee_data->GameRobotState.robot_level;

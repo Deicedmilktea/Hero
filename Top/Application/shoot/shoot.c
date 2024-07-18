@@ -30,16 +30,16 @@ void shoot_init()
         },
         .controller_param_init_config = {
             .speed_PID = {
-                .Kp = 20, // 20
-                .Ki = 1,  // 1
+                .Kp = 5, // 20
+                .Ki = 0,
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 10000,
                 .MaxOut = 15000,
             },
             .current_PID = {
-                .Kp = 0.7, // 0.7
-                .Ki = 0.1, // 0.1
+                .Kp = 1, // 0.7
+                .Ki = 0, // 0.1
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 10000,
@@ -56,15 +56,16 @@ void shoot_init()
         },
         .motor_type = M3508};
     friction_config.can_init_config.tx_id = 1; // 左摩擦轮
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
     friction_l = DJIMotorInit(&friction_config);
 
     friction_config.can_init_config.tx_id = 2; // 右摩擦轮,改txid和方向就行
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
     friction_r = DJIMotorInit(&friction_config);
 
     friction_config.can_init_config.tx_id = 3; // 上摩擦轮
-    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_NORMAL;
+    friction_config.motor_type = M2006;
+    friction_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
     friction_up = DJIMotorInit(&friction_config);
 
     Motor_Init_Config_s lens_config = {
@@ -132,14 +133,14 @@ void shoot_task()
     }
     else
     {
-        // DJIMotorEnable(friction_l);
-        // DJIMotorEnable(friction_r);
-        // DJIMotorEnable(friction_up);
+        DJIMotorEnable(friction_l);
+        DJIMotorEnable(friction_r);
+        DJIMotorEnable(friction_up);
         // DJIMotorEnable(lens);
         // DJIMotorEnable(video);
-        DJIMotorStop(friction_l);
-        DJIMotorStop(friction_r);
-        DJIMotorStop(friction_up);
+        // DJIMotorStop(friction_l);
+        // DJIMotorStop(friction_r);
+        // DJIMotorStop(friction_up);
         DJIMotorStop(lens);
         DJIMotorStop(video);
     }

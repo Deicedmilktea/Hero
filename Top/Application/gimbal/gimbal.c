@@ -22,6 +22,10 @@ static Subscriber_t *gimbal_sub;                  // cmd控制消息订阅者
 static Gimbal_Upload_Data_s gimbal_feedback_data; // 回传给cmd的云台状态信息
 static Gimbal_Ctrl_Cmd_s gimbal_cmd_recv;         // 来自cmd的控制信息
 
+static float yaw_cur;
+static float yaw_angle_out;
+static float yaw_speed_out;
+
 void gimbal_init()
 {
     gimbal_ins = INS_Init(); // IMU先初始化,获取姿态数据指针赋给yaw电机的其他数据来源
@@ -34,21 +38,25 @@ void gimbal_init()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 8, // 8
-                .Ki = 0,
-                .Kd = 0,
-                .DeadBand = 0.1,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-                .IntegralLimit = 100,
-                .MaxOut = 500,
+                .Kp = 0.4,
+                .Ki = 0.415,
+                .Kd = 0.016,
+                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_DerivativeFilter | PID_ChangingIntegrationRate,
+                .CoefB = 0.6,
+                .CoefA = 0.4,
+                .Derivative_LPF_RC = 0.025,
+                .IntegralLimit = 160,
+                .MaxOut = 800,
             },
             .speed_PID = {
-                .Kp = 50, // 50
-                .Ki = 0,  // 200
+                .Kp = 10000,
+                .Ki = 2400,
                 .Kd = 0,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-                .IntegralLimit = 3000,
-                .MaxOut = 20000,
+                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate,
+                .CoefB = 0.3,
+                .CoefA = 0.2,
+                .IntegralLimit = 10000,
+                .MaxOut = 25000,
             },
             .other_angle_feedback_ptr = &gimbal_ins->YawTotalAngle,
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -71,20 +79,22 @@ void gimbal_init()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 10, // 10
-                .Ki = 0,
+                .Kp = 5, // 10
+                .Ki = 2,
                 .Kd = 0,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-                .IntegralLimit = 100,
+                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate,
+                .CoefB = 0.6,
+                .CoefA = 0.4,
+                .IntegralLimit = 200,
                 .MaxOut = 500,
             },
             .speed_PID = {
-                .Kp = 50, // 50
-                .Ki = 0,  // 350
+                .Kp = 100, // 50
+                .Ki = 10,  // 350
                 .Kd = 0,  // 0
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
                 .IntegralLimit = 2500,
-                .MaxOut = 20000,
+                .MaxOut = 16384,
             },
             .other_angle_feedback_ptr = &gimbal_ins->Roll,
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -182,6 +192,9 @@ void gimbal_task()
     DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
     DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
 
+    yaw_cur = yaw_motor->measure.real_current;
+    yaw_angle_out = yaw_motor->motor_controller.angle_PID.Output;
+    yaw_speed_out = yaw_motor->motor_controller.speed_PID.Output;
     // 设置反馈数据,主要是imu和yaw的ecd
     gimbal_feedback_data.gimbal_ins = *gimbal_ins;
     gimbal_feedback_data.yaw_angle = yaw_motor->measure.ecd;

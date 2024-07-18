@@ -10,7 +10,7 @@
 #endif // !ROBOT_DEF_PARAM_WARNING
 
 #if defined(ONE_BOARD) || defined(CHASSIS_BOARD)
-// #include "chassis_task.h"
+#include "chassis.h"
 #endif
 
 #if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
