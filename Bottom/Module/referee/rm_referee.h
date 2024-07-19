@@ -79,6 +79,7 @@ typedef struct
 {
 	Referee_Interactive_Flag_t Referee_Interactive_Flag;
 	// 为UI绘制以及交互数据所用
+	ui_mode_e ui_mode;
 	chassis_mode_e chassis_mode;		   // 底盘模式
 	gimbal_mode_e gimbal_mode;			   // 云台模式
 	loader_mode_e loader_mode;			   // 拨盘
@@ -92,6 +93,7 @@ typedef struct
 	float pitch;						   // 云台pitch角度
 
 	// 上一次的模式，用于flag判断
+	ui_mode_e ui_last_mode;
 	chassis_mode_e chassis_last_mode;
 	gimbal_mode_e gimbal_last_mode;
 	loader_mode_e loader_last_mode;

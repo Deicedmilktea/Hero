@@ -42,6 +42,7 @@ void gimbal_init()
                 .Ki = 0.415,
                 .Kd = 0.016,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_DerivativeFilter | PID_ChangingIntegrationRate,
+                .DeadBand = 0.1,
                 .CoefB = 0.6,
                 .CoefA = 0.4,
                 .Derivative_LPF_RC = 0.025,
@@ -116,54 +117,54 @@ void gimbal_init()
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
 
-    // yaw
-    Motor_Init_Config_s lk_config = {
-        .can_init_config = {
-            .can_handle = &hcan1,
-            .tx_id = 1,
-        },
-        .controller_param_init_config = {
-            .angle_PID = {
-                .Kp = 0.6,
-                .Ki = 0.01,
-                .Kd = 0.0135,
-                .Improve = PID_Integral_Limit | PID_OutputFilter,
-                .IntegralLimit = 10,
-                .MaxOut = 50,
-            },
-            .speed_PID = {
-                .Kp = 10,
-                .Ki = 0,
-                .Kd = 0,
-                .Improve = PID_Integral_Limit | PID_OutputFilter,
-                .IntegralLimit = 800,
-                .MaxOut = 2000,
-            },
-            .current_PID = {
-                .Kp = 280,
-                .Ki = 200,
-                .Kd = 0,
-                .Improve = PID_Integral_Limit | PID_OutputFilter,
-                .IntegralLimit = 800,
-                .MaxOut = 20000,
-            },
-            .other_angle_feedback_ptr = &gimbal_ins->Roll,
-            // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
-            .other_speed_feedback_ptr = (&gimbal_ins->Gyro[1]),
-        },
-        .controller_setting_init_config = {
-            .angle_feedback_source = MOTOR_FEED,
-            .speed_feedback_source = MOTOR_FEED,
-            .outer_loop_type = SPEED_LOOP,
-            .close_loop_type = SPEED_LOOP,
-            .feedback_reverse_flag = FEEDBACK_DIRECTION_NORMAL,
-            .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
-        },
-        .motor_work_type = LK_SINGLE_MOTOR_TORQUE,
-        .motor_type = LK9025,
-    };
+    // // yaw
+    // Motor_Init_Config_s lk_config = {
+    //     .can_init_config = {
+    //         .can_handle = &hcan1,
+    //         .tx_id = 1,
+    //     },
+    //     .controller_param_init_config = {
+    //         .angle_PID = {
+    //             .Kp = 0.6,
+    //             .Ki = 0.01,
+    //             .Kd = 0.0135,
+    //             .Improve = PID_Integral_Limit | PID_OutputFilter,
+    //             .IntegralLimit = 10,
+    //             .MaxOut = 50,
+    //         },
+    //         .speed_PID = {
+    //             .Kp = 10,
+    //             .Ki = 0,
+    //             .Kd = 0,
+    //             .Improve = PID_Integral_Limit | PID_OutputFilter,
+    //             .IntegralLimit = 800,
+    //             .MaxOut = 2000,
+    //         },
+    //         .current_PID = {
+    //             .Kp = 280,
+    //             .Ki = 200,
+    //             .Kd = 0,
+    //             .Improve = PID_Integral_Limit | PID_OutputFilter,
+    //             .IntegralLimit = 800,
+    //             .MaxOut = 20000,
+    //         },
+    //         .other_angle_feedback_ptr = &gimbal_ins->Roll,
+    //         // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
+    //         .other_speed_feedback_ptr = (&gimbal_ins->Gyro[1]),
+    //     },
+    //     .controller_setting_init_config = {
+    //         .angle_feedback_source = MOTOR_FEED,
+    //         .speed_feedback_source = MOTOR_FEED,
+    //         .outer_loop_type = SPEED_LOOP,
+    //         .close_loop_type = SPEED_LOOP,
+    //         .feedback_reverse_flag = FEEDBACK_DIRECTION_NORMAL,
+    //         .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
+    //     },
+    //     .motor_work_type = LK_SINGLE_MOTOR_TORQUE,
+    //     .motor_type = LK9025,
+    // };
 
-    lk_motor = LKMotorInit(&lk_config);
+    // lk_motor = LKMotorInit(&lk_config);
 }
 
 // 云台运动task
@@ -202,6 +203,6 @@ void gimbal_task()
     // 推送消息
     PubPushMessage(gimbal_pub, (void *)&gimbal_feedback_data);
 
-    LKMotorSetRef(lk_motor, 6000);
+    // LKMotorSetRef(lk_motor, 6000);
     // LKMotorStop(lk_motor);
 }

@@ -154,7 +154,7 @@ void chassis_init()
         .can_config = {
             .can_handle = &hcan1,
             .tx_id = 0x311,
-            .rx_id = 0x312,
+            .rx_id = 0x54,
         },
         .recv_data_len = sizeof(Chassis_Ctrl_Cmd_s),
         .send_data_len = sizeof(Chassis_Upload_Data_s),
@@ -166,6 +166,7 @@ void chassis_task()
 {
     chassis_cmd_recv = *(Chassis_Ctrl_Cmd_s *)CANCommGet(chasiss_can_comm);
 
+    ui_data.ui_mode = chassis_cmd_recv.ui_mode;
     ui_data.chassis_mode = chassis_cmd_recv.chassis_mode;
     ui_data.supcap_mode = chassis_cmd_recv.supcap_mode;
     ui_data.loader_mode = chassis_cmd_recv.loader_mode;

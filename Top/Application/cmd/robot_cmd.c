@@ -95,7 +95,7 @@ void RobotCMDInit()
     CANComm_Init_Config_s comm_conf = {
         .can_config = {
             .can_handle = &hcan1,
-            .tx_id = 0x312,
+            .tx_id = 0x54,
             .rx_id = 0x311,
         },
         .recv_data_len = sizeof(Chassis_Upload_Data_s),
@@ -157,7 +157,7 @@ void RobotCMDTask()
  */
 static void CalcOffsetAngle()
 {
-    float relative_angle = (gimbal_fetch_data.yaw_angle - YAW_ALIGN_ANGLE) * ECD_ANGLE_COEF_DJI;
+    float relative_angle = (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI;
     if (relative_angle > 180)
         relative_angle -= 360;
     else if (relative_angle < -180)
@@ -192,8 +192,8 @@ static void RemoteControlSet()
     }
 
     // 底盘参数,目前没有加入小陀螺(调试似乎暂时没有必要),系数需要调整
-    chassis_cmd_send.vx = 10.0f * rc_data[TEMP].rc.rocker_r_; // _水平方向
-    chassis_cmd_send.vy = 10.0f * rc_data[TEMP].rc.rocker_r1; // 1数值方向
+    chassis_cmd_send.vx = rc_data[TEMP].rc.rocker_r_ / 660.0f * chassis_speed_buff[0]; // _水平方向
+    chassis_cmd_send.vy = rc_data[TEMP].rc.rocker_r1 / 660.0f * chassis_speed_buff[0]; // 1数值方向
     float offset_angle = chassis_cmd_send.offset_angle;
     if (offset_angle > -5 && offset_angle < 5)
         offset_angle = 0;
@@ -265,8 +265,8 @@ static void RemoteMouseKeySet()
     }
     else
     {
-        gimbal_cmd_send.yaw += (float)rc_data[TEMP].mouse.x / 660 * 10; // 系数待测
-        gimbal_cmd_send.pitch += (float)rc_data[TEMP].mouse.y / 660 * 10;
+        gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 10; // 系数待测
+        gimbal_cmd_send.pitch -= (float)rc_data[TEMP].mouse.y / 660 * 10;
     }
 
     limit_gimbal();
@@ -399,8 +399,8 @@ static void VideoMouseKeySet()
     }
     else
     {
-        gimbal_cmd_send.yaw += (float)video_data[TEMP].key_data.mouse_x / 660 * 10; // 系数待测
-        gimbal_cmd_send.pitch += (float)video_data[TEMP].key_data.mouse_y / 660 * 10;
+        gimbal_cmd_send.yaw -= (float)video_data[TEMP].key_data.mouse_x / 660 * 10; // 系数待测
+        gimbal_cmd_send.pitch -= (float)video_data[TEMP].key_data.mouse_y / 660 * 10;
     }
     limit_gimbal();
 

@@ -187,7 +187,7 @@ typedef struct
     video_mode_e video_mode;
     friction_mode_e friction_mode;
     float pitch;
-    uint8_t is_tracking; // 视觉是否识别
+    uint8_t is_tracking; // 视觉是否追踪
 } Chassis_Ctrl_Cmd_s;
 
 // cmd发布的云台控制数据,由gimbal订阅
