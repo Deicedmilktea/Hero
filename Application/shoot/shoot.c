@@ -11,6 +11,8 @@
 #include "robot_def.h"
 #include "bsp_dwt.h"
 #include "dji_motor.h"
+#include "arm_math.h"
+#include "math.h"
 
 static DJIMotor_Instance *friction_l, *friction_r, *friction_up, *lens, *video;
 
@@ -21,6 +23,8 @@ static Shoot_Upload_Data_s shoot_feedback_data; // 来自cmd的发射控制信�
 
 static int16_t lens_init_angle = 0;
 static int16_t video_init_angle = 0;
+
+static void video_adaptive();
 
 void shoot_init()
 {
@@ -189,7 +193,7 @@ void shoot_task()
             DJIMotorSetRef(lens, lens_init_angle);
 
         if (shoot_cmd_recv.video_mode == VIDEO_ADAPTIVE)
-            DJIMotorSetRef(video, video_init_angle + VIDEO_MOVE_ANGLE);
+            video_adaptive();
         else
             DJIMotorSetRef(video, video_init_angle);
     }
@@ -198,4 +202,26 @@ void shoot_task()
     shoot_feedback_data.video_current = video->measure.real_current;
 
     PubPushMessage(shoot_pub, (void *)&shoot_feedback_data);
+}
+
+static void video_adaptive()
+{
+    if (video->measure.total_angle < video_init_angle)
+        DJIMotorSetRef(video, video_init_angle);
+    else if (video->measure.total_angle > video_init_angle + VIDEO_MOVE_ANGLE)
+        DJIMotorSetRef(video, video_init_angle + VIDEO_MOVE_ANGLE);
+    else
+    {
+        double a = 116.8, b = 77.5, c = 97.8, d = 32, e;
+        double alpha, beta, theta1, theta2, theta3;
+
+        beta = (55.6 + shoot_cmd_recv.gimbal_pitch) * DEGREE_2_RAD;
+        e = sqrt(pow(a, 2) + pow(b, 2) - 2 * a * b * arm_cos_f32(beta));
+        theta1 = asin(a * arm_sin_f32(beta) / e);
+        theta3 = acos((pow(c, 2) + pow(d, 2) - pow(e, 2)) / (2 * c * d));
+        theta2 = asin(d * arm_sin_f32(theta3) / e);
+        alpha = (theta1 + theta2 + theta3 + beta - PI) * RAD_2_DEGREE;
+
+        DJIMotorSetRef(video, video_init_angle + (alpha - 16.7) * 36);
+    }
 }

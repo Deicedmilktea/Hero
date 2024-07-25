@@ -178,7 +178,7 @@ void LKMotorControl()
             switch (motor->motor_working_type)
             {
             case LK_SINGLE_MOTOR_TORQUE:
-                motor->motor_can_ins->tx_buff[0] = 0xA0; // 电机力矩控制指令
+                motor->motor_can_ins->tx_buff[0] = 0xA1; // 电机力矩控制指令
                 memcpy(motor->motor_can_ins->tx_buff + 4, &set16, sizeof(int16_t));
                 if (motor->stop_flag == MOTOR_STOP)
                 { // 若该电机处于停止状态,直接将发送buff置零

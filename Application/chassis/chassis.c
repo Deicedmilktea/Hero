@@ -33,7 +33,8 @@ static float chassis_vx, chassis_vy, chassis_wz;                              //
 static float vt_lf, vt_rf, vt_lb, vt_rb;                                      // 底盘速度解算后的临时输出,待进行限幅
 static int16_t chassis_wz_buff[2] = {24000, 36000};                           // 旋转速度
 
-static Supcap_Instance *cap; // 超级电容
+static Supcap_Instance *cap;            // 超级电容
+static PID_Instance chassis_follow_pid; // 底盘跟随PID
 
 static referee_info_t *referee_data;       // 用于获取裁判系统的数据
 static Referee_Interactive_info_t ui_data; // UI数据，将底盘中的数据传入此结构体的对应变量中，UI会自动检测是否变化，对应显示UI
@@ -99,6 +100,19 @@ void chassis_init()
     chassis_motor_config.can_init_config.tx_id = 3;
     chassis_motor_config.controller_setting_init_config.motor_reverse_flag = MOTOR_DIRECTION_REVERSE;
     motor_rb = DJIMotorInit(&chassis_motor_config);
+
+    // 底盘跟随PID
+    PID_Init_Config_s chassis_follow_pid_conf = {
+        .Kp = 70,
+        .Ki = 0,
+        .Kd = 0,
+        .MaxOut = 12000,
+        .DeadBand = 1.5,
+        .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement | PID_OutputFilter,
+        .Derivative_LPF_RC = 0.05,
+        .Output_LPF_RC = 0.1,
+    };
+    PIDInit(&chassis_follow_pid, &chassis_follow_pid_conf);
 
     // 拨盘电机
     Motor_Init_Config_s loader_config = {
@@ -193,6 +207,11 @@ void chassis_task()
         DJIMotorEnable(motor_rb);
     }
 
+    DJIMotorStop(motor_lf);
+    DJIMotorStop(motor_rf);
+    DJIMotorStop(motor_lb);
+    DJIMotorStop(motor_rb);
+
     if (chassis_cmd_recv.robot_status == ROBOT_STOP)
         DJIMotorStop(loader);
     else
@@ -209,7 +228,8 @@ void chassis_task()
         chassis_wz = (referee_data->GameRobotState.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
         break;
     default:
-        chassis_wz = chassis_cmd_recv.wz = -1.5f * chassis_cmd_recv.offset_angle * abs(chassis_cmd_recv.offset_angle);
+        // chassis_wz = -1.5f * chassis_cmd_recv.offset_angle * abs(chassis_cmd_recv.offset_angle);
+        chassis_wz = -PIDCalculate(&chassis_follow_pid, chassis_cmd_recv.offset_angle, 0);
         break;
     }
 
@@ -253,7 +273,7 @@ static void LimitChassisOutput()
     float Watch_Buffer = referee_data->PowerHeatData.buffer_energy; // 获取裁判系统的电量数据
     float Plimit;                                                   // 限制比例
 
-    if (chassis_cmd_recv.supcap_mode == SUPCAP_ON)
+    if (chassis_cmd_recv.supcap_mode == SUPCAP_OFF)
     {
         if (Watch_Buffer <= 60 && Watch_Buffer >= 40)
             Plimit = 0.95; // 近似于以一个线性来约束比例（为了保守可以调低Plimit，但会影响响应速度）

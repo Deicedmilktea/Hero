@@ -18,8 +18,8 @@
 
 /* 开发板类型定义,烧录时注意不要弄错对应功能;修改定义后需要重新编译,只能存在一个定义! */
 // #define ONE_BOARD // 单板控制整车
-// #define CHASSIS_BOARD //底盘板
-#define GIMBAL_BOARD // 云台板
+#define CHASSIS_BOARD //底盘板
+// #define GIMBAL_BOARD // 云台板
 
 #define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
@@ -29,24 +29,24 @@
 
 /* 机器人重要参数定义,注意根据不同机器人进行修改,浮点数需要以.0或f结尾,无符号以u结尾 */
 // 云台参数
-#define YAW_CHASSIS_ALIGN_ECD 7070  // 云台和底盘对齐指向相同方向时的电机编码器值,若对云台有机械改动需要修改
+#define YAW_CHASSIS_ALIGN_ECD 61100 // 云台和底盘对齐指向相同方向时的电机编码器值,若对云台有机械改动需要修改
 #define YAW_ECD_GREATER_THAN_4096 0 // ALIGN_ECD值是否大于4096,是为1,否为0;用于计算云台偏转角度
 #define PITCH_HORIZON_ECD 3412      // 云台处于水平位置时编码器值,若对云台有机械改动需要修改
-#define PITCH_MAX 38                // 云台竖直方向最大角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
-#define PITCH_MIN -8                // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
+#define PITCH_MAX 35                // 45                // 云台竖直方向最大角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
+#define PITCH_MIN -5                //-9               // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
 // 发射参数
 #define ONE_BULLET_DELTA_ANGLE 60    // 发射一发弹丸拨盘转动的距离,由机械设计图纸给出
-#define REDUCTION_RATIO_LOADER 50.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
+#define REDUCTION_RATIO_LOADER 51.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
 #define NUM_PER_CIRCLE 6             // 拨盘一圈的装载量
 #define SHOOT_DELAY 1000             // 发射后的延迟时间,单位ms
 #define TRIGGER_SINGLE_ANGLE 1140    // 单发拨盘转动的角度,19*360/6=1140
 #define LENS_THRESHOLD_CURRENT 1500  // 判断lens阈值电流
 #define LENS_PREPARE_SPEED 6000      // lens准备阶段速度
-#define LENS_MOVE_ANGLE 1950         // lens移动角度
-#define VIDEO_MOVE_ANGLE 1400        // video移动角度
+#define LENS_MOVE_ANGLE 2254         // lens移动角度
+#define VIDEO_MOVE_ANGLE 5045        // video移动角度
 // 机器人底盘修改的参数,单位为mm(毫米)
-#define WHEEL_BASE 425                          // 纵向轴距(前进后退方向)
-#define TRACK_WIDTH 371                         // 横向轮距(左右平移方向)
+#define WHEEL_BASE 462                          // 纵向轴距(前进后退方向)
+#define TRACK_WIDTH 380                         // 横向轮距(左右平移方向)
 #define RADIUS_WHEEL 77                         // 轮子半径
 #define HALF_WHEEL_BASE (WHEEL_BASE / 2.0f)     // 半轴距
 #define HALF_TRACK_WIDTH (TRACK_WIDTH / 2.0f)   // 半轮距
@@ -208,6 +208,7 @@ typedef struct
     lens_judge_mode_e lens_judge_mode; // prepare
     lens_mode_e lens_mode;             // lens
     video_mode_e video_mode;           // video
+    float gimbal_pitch;
     Robot_Status_e robot_status;
 } Shoot_Ctrl_Cmd_s;
 

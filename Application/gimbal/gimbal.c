@@ -14,8 +14,8 @@
 #include "message_center.h"
 
 static attitude_t *gimbal_ins; // 云台IMU数据
-static DJIMotor_Instance *yaw_motor, *pitch_motor;
-static LKMotor_Instance *lk_motor;
+static LKMotor_Instance *yaw_motor;
+static DJIMotor_Instance *pitch_motor;
 
 static Publisher_t *gimbal_pub;                   // 云台应用消息发布者(云台反馈给cmd)
 static Subscriber_t *gimbal_sub;                  // cmd控制消息订阅者
@@ -30,7 +30,7 @@ void gimbal_init()
 {
     gimbal_ins = INS_Init(); // IMU先初始化,获取姿态数据指针赋给yaw电机的其他数据来源
 
-    // YAW
+    // yaw
     Motor_Init_Config_s yaw_config = {
         .can_init_config = {
             .can_handle = &hcan1,
@@ -38,64 +38,61 @@ void gimbal_init()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 0.4,
-                .Ki = 0.415,
-                .Kd = 0.016,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_DerivativeFilter | PID_ChangingIntegrationRate,
-                .DeadBand = 0.1,
-                .CoefB = 0.6,
-                .CoefA = 0.4,
-                .Derivative_LPF_RC = 0.025,
-                .IntegralLimit = 160,
-                .MaxOut = 800,
+                .Kp = 0.8,
+                .Ki = 0.01,
+                .Kd = 0.0135,
+                .Improve = PID_Integral_Limit | PID_OutputFilter,
+                .IntegralLimit = 10,
+                .MaxOut = 50,
             },
             .speed_PID = {
-                .Kp = 10000,
-                .Ki = 2400,
+                .Kp = 40, // 10
+                .Ki = 0,
                 .Kd = 0,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate,
-                .CoefB = 0.3,
-                .CoefA = 0.2,
-                .IntegralLimit = 10000,
-                .MaxOut = 25000,
+                .Improve = PID_Integral_Limit | PID_OutputFilter,
+                .IntegralLimit = 800,
+                .MaxOut = 1500,
             },
             .other_angle_feedback_ptr = &gimbal_ins->YawTotalAngle,
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
-            .other_speed_feedback_ptr = &gimbal_ins->Gyro[2],
+            .other_speed_feedback_ptr = (&gimbal_ins->Gyro[2]),
         },
         .controller_setting_init_config = {
             .angle_feedback_source = OTHER_FEED,
             .speed_feedback_source = OTHER_FEED,
             .outer_loop_type = ANGLE_LOOP,
             .close_loop_type = ANGLE_LOOP | SPEED_LOOP,
-            .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
+            .feedback_reverse_flag = FEEDBACK_DIRECTION_NORMAL,
+            .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
         },
-        .motor_type = GM6020};
+        .motor_work_type = LK_SINGLE_MOTOR_TORQUE,
+        .motor_type = LK9025,
+    };
 
-    // PITCH
+    // pitch
     Motor_Init_Config_s pitch_config = {
         .can_init_config = {
             .can_handle = &hcan2,
-            .tx_id = 2,
+            .tx_id = 6,
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 5, // 10
-                .Ki = 2,
-                .Kd = 0,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate,
-                .CoefB = 0.6,
+                .Kp = 10, // 10
+                .Ki = 0.2,
+                .Kd = 1,
+                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement, // | PID_ChangingIntegrationRate,
+                .CoefB = 1.6,
                 .CoefA = 0.4,
-                .IntegralLimit = 200,
+                .IntegralLimit = 400,
                 .MaxOut = 500,
             },
             .speed_PID = {
-                .Kp = 100, // 50
-                .Ki = 10,  // 350
+                .Kp = 20, // 50
+                .Ki = 10, // 350
                 .Kd = 0,  // 0
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-                .IntegralLimit = 2500,
-                .MaxOut = 16384,
+                .IntegralLimit = 500,
+                .MaxOut = 4000,
             },
             .other_angle_feedback_ptr = &gimbal_ins->Roll,
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -105,66 +102,17 @@ void gimbal_init()
             .angle_feedback_source = OTHER_FEED,
             .speed_feedback_source = OTHER_FEED,
             .outer_loop_type = ANGLE_LOOP,
-            .close_loop_type = SPEED_LOOP | ANGLE_LOOP,
-            .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
+            .close_loop_type = ANGLE_LOOP | SPEED_LOOP,
+            .motor_reverse_flag = MOTOR_DIRECTION_REVERSE,
         },
-        .motor_type = GM6020,
+        .motor_type = M3508,
     };
     // 电机对total_angle闭环,上电时为零,会保持静止,收到遥控器数据再动
-    yaw_motor = DJIMotorInit(&yaw_config);
+    yaw_motor = LKMotorInit(&yaw_config);
     pitch_motor = DJIMotorInit(&pitch_config);
 
     gimbal_pub = PubRegister("gimbal_feed", sizeof(Gimbal_Upload_Data_s));
     gimbal_sub = SubRegister("gimbal_cmd", sizeof(Gimbal_Ctrl_Cmd_s));
-
-    // // yaw
-    // Motor_Init_Config_s lk_config = {
-    //     .can_init_config = {
-    //         .can_handle = &hcan1,
-    //         .tx_id = 1,
-    //     },
-    //     .controller_param_init_config = {
-    //         .angle_PID = {
-    //             .Kp = 0.6,
-    //             .Ki = 0.01,
-    //             .Kd = 0.0135,
-    //             .Improve = PID_Integral_Limit | PID_OutputFilter,
-    //             .IntegralLimit = 10,
-    //             .MaxOut = 50,
-    //         },
-    //         .speed_PID = {
-    //             .Kp = 10,
-    //             .Ki = 0,
-    //             .Kd = 0,
-    //             .Improve = PID_Integral_Limit | PID_OutputFilter,
-    //             .IntegralLimit = 800,
-    //             .MaxOut = 2000,
-    //         },
-    //         .current_PID = {
-    //             .Kp = 280,
-    //             .Ki = 200,
-    //             .Kd = 0,
-    //             .Improve = PID_Integral_Limit | PID_OutputFilter,
-    //             .IntegralLimit = 800,
-    //             .MaxOut = 20000,
-    //         },
-    //         .other_angle_feedback_ptr = &gimbal_ins->Roll,
-    //         // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
-    //         .other_speed_feedback_ptr = (&gimbal_ins->Gyro[1]),
-    //     },
-    //     .controller_setting_init_config = {
-    //         .angle_feedback_source = MOTOR_FEED,
-    //         .speed_feedback_source = MOTOR_FEED,
-    //         .outer_loop_type = SPEED_LOOP,
-    //         .close_loop_type = SPEED_LOOP,
-    //         .feedback_reverse_flag = FEEDBACK_DIRECTION_NORMAL,
-    //         .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
-    //     },
-    //     .motor_work_type = LK_SINGLE_MOTOR_TORQUE,
-    //     .motor_type = LK9025,
-    // };
-
-    // lk_motor = LKMotorInit(&lk_config);
 }
 
 // 云台运动task
@@ -176,23 +124,22 @@ void gimbal_task()
 
     if (gimbal_cmd_recv.robot_status == ROBOT_STOP)
     {
-        DJIMotorStop(yaw_motor);
+        LKMotorStop(yaw_motor);
         DJIMotorStop(pitch_motor);
     }
     else
     {
-        DJIMotorEnable(yaw_motor);
+        LKMotorEnable(yaw_motor);
         DJIMotorEnable(pitch_motor);
     }
 
-    DJIMotorChangeFeed(yaw_motor, ANGLE_LOOP, OTHER_FEED);
-    DJIMotorChangeFeed(yaw_motor, SPEED_LOOP, OTHER_FEED);
-    DJIMotorChangeFeed(pitch_motor, ANGLE_LOOP, OTHER_FEED);
-    DJIMotorChangeFeed(pitch_motor, SPEED_LOOP, OTHER_FEED);
+    // LKMotorStop(yaw_motor);
+    DJIMotorStop(pitch_motor);
 
-    DJIMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
+    LKMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
     DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);
 
+    // debug
     yaw_cur = yaw_motor->measure.real_current;
     yaw_angle_out = yaw_motor->motor_controller.angle_PID.Output;
     yaw_speed_out = yaw_motor->motor_controller.speed_PID.Output;
@@ -202,7 +149,4 @@ void gimbal_task()
 
     // 推送消息
     PubPushMessage(gimbal_pub, (void *)&gimbal_feedback_data);
-
-    // LKMotorSetRef(lk_motor, 6000);
-    // LKMotorStop(lk_motor);
 }

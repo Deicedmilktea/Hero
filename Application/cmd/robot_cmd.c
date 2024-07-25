@@ -20,6 +20,7 @@
 #include "message_center.h"
 #include "general_def.h"
 #include "dji_motor.h"
+#include "lk_motor.h"
 #include "can_comm.h"
 // bsp
 #include "bsp_dwt.h"
@@ -53,8 +54,6 @@ extern uint8_t is_remote_online;   // 遥控器在线状态
 
 static int32_t chassis_speed_max;                                                                               // 底盘速度最大值
 static int32_t chassis_speed_buff[10] = {30000, 33000, 36000, 39000, 45000, 51000, 54000, 60000, 66000, 72000}; // 底盘速度缓冲区
-static int16_t chassis_wz_max;
-static int16_t chassis_wz_buff[2] = {24000, 36000}; // 底盘旋转速度缓冲区
 
 static void CalcOffsetAngle();   // 计算云台偏转角度
 static void RemoteControlSet();  // 遥控器控制
@@ -145,6 +144,7 @@ void RobotCMDTask()
     chassis_cmd_send.pitch = gimbal_fetch_data.gimbal_ins.Roll;
     CANCommSend(cmd_can_comm, (void *)&chassis_cmd_send);
 
+    shoot_cmd_send.gimbal_pitch = gimbal_fetch_data.gimbal_ins.Roll;
     PubPushMessage(shoot_cmd_pub, (void *)&shoot_cmd_send);
     PubPushMessage(gimbal_cmd_pub, (void *)&gimbal_cmd_send);
     VisionSend();
@@ -157,7 +157,7 @@ void RobotCMDTask()
  */
 static void CalcOffsetAngle()
 {
-    float relative_angle = (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_DJI;
+    float relative_angle = (gimbal_fetch_data.yaw_angle - YAW_CHASSIS_ALIGN_ECD) * ECD_ANGLE_COEF_LK;
     if (relative_angle > 180)
         relative_angle -= 360;
     else if (relative_angle < -180)
@@ -229,7 +229,7 @@ static void RemoteMouseKeySet()
         break;
     }
 
-    chassis_cmd_send.vx = (rc_data[TEMP].key[KEY_PRESS].d - rc_data[TEMP].key[KEY_PRESS].a) * chassis_speed_max; // 系数待测
+    chassis_cmd_send.vx = (rc_data[TEMP].key[KEY_PRESS].d - rc_data[TEMP].key[KEY_PRESS].a) * chassis_speed_max;
     chassis_cmd_send.vy = (rc_data[TEMP].key[KEY_PRESS].w - rc_data[TEMP].key[KEY_PRESS].s) * chassis_speed_max;
 
     // F键控制底盘模式
