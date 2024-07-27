@@ -140,13 +140,13 @@ void shoot_task()
         DJIMotorEnable(friction_l);
         DJIMotorEnable(friction_r);
         DJIMotorEnable(friction_up);
-        // DJIMotorEnable(lens);
-        // DJIMotorEnable(video);
+        DJIMotorEnable(lens);
+        DJIMotorEnable(video);
         // DJIMotorStop(friction_l);
         // DJIMotorStop(friction_r);
         // DJIMotorStop(friction_up);
-        DJIMotorStop(lens);
-        DJIMotorStop(video);
+        // DJIMotorStop(lens);
+        // DJIMotorStop(video);
     }
 
     switch (shoot_cmd_recv.friction_mode)
@@ -215,13 +215,13 @@ static void video_adaptive()
         double a = 116.8, b = 77.5, c = 97.8, d = 32, e;
         double alpha, beta, theta1, theta2, theta3;
 
-        beta = (55.6 + shoot_cmd_recv.gimbal_pitch) * DEGREE_2_RAD;
+        beta = (35.6 + shoot_cmd_recv.gimbal_pitch) * DEGREE_2_RAD;
         e = sqrt(pow(a, 2) + pow(b, 2) - 2 * a * b * arm_cos_f32(beta));
         theta1 = asin(a * arm_sin_f32(beta) / e);
         theta3 = acos((pow(c, 2) + pow(d, 2) - pow(e, 2)) / (2 * c * d));
         theta2 = asin(d * arm_sin_f32(theta3) / e);
         alpha = (theta1 + theta2 + theta3 + beta - PI) * RAD_2_DEGREE;
 
-        DJIMotorSetRef(video, video_init_angle + (alpha - 16.7) * 36);
+        DJIMotorSetRef(video, video_init_angle + (alpha + 7.5) * 36);
     }
 }

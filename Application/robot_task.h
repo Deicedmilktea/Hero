@@ -47,6 +47,11 @@ void OSTaskInit()
 
     osThreadDef(robottask, StartROBOTTASK, osPriorityNormal, 0, 1024);
     robotTaskHandle = osThreadCreate(osThread(robottask), NULL);
+
+#if defined(CHASSIS_BOARD)
+    osThreadDef(uitask, StartUITASK, osPriorityNormal, 0, 128);
+    uiTaskHandle = osThreadCreate(osThread(uitask), NULL);
+#endif
 }
 
 __attribute__((noreturn)) void StartINSTASK(void const *argument)

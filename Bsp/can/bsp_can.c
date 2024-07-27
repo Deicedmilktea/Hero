@@ -30,13 +30,35 @@ static void CANAddFilter(CAN_Instance *_instance)
     CAN_FilterTypeDef can_filter_conf;
     static uint8_t can1_filter_idx = 0, can2_filter_idx = 14; // 0-13给can1用,14-27给can2用
 
-    can_filter_conf.FilterMode           = CAN_FILTERMODE_IDLIST;                                                       // 使用id list模式,即只有将rxid添加到过滤器中才会接收到,其他报文会被过滤
-    can_filter_conf.FilterScale          = CAN_FILTERSCALE_16BIT;                                                       // 使用16位id模式,即只有低16位有效
-    can_filter_conf.FilterFIFOAssignment = (_instance->tx_id & 1) ? CAN_RX_FIFO0 : CAN_RX_FIFO1;                        // 奇数id的模块会被分配到FIFO0,偶数id的模块会被分配到FIFO1
-    can_filter_conf.SlaveStartFilterBank = 14;                                                                          // 从第14个过滤器开始配置从机过滤器(在STM32的BxCAN控制器中CAN2是CAN1的从机)
-    can_filter_conf.FilterIdLow          = _instance->rx_id << 5;                                                       // 过滤器寄存器的低16位,因为使用STDID,所以只有低11位有效,高5位要填0
-    can_filter_conf.FilterBank           = _instance->can_handle == &hcan1 ? (can1_filter_idx++) : (can2_filter_idx++); // 根据can_handle判断是CAN1还是CAN2,然后自增
-    can_filter_conf.FilterActivation     = CAN_FILTER_ENABLE;                                                           // 启用过滤器
+    //   can_filter.FilterBank = 0;                      // filter 0
+    //   can_filter.FilterMode = CAN_FILTERMODE_IDMASK;  // 标识符屏蔽位模式
+    //   can_filter.FilterScale = CAN_FILTERSCALE_32BIT; // 过滤器位宽为单个32位
+    //   can_filter.FilterIdHigh = 0;                    // 标识符寄存器
+    //   can_filter.FilterIdLow = 0;                     // 标识符寄存器
+    //   can_filter.FilterMaskIdHigh = 0;                // 屏蔽寄存器
+    //   can_filter.FilterMaskIdLow = 0;                 // 屏蔽寄存器   set mask 0 to receive all can id
+    //   can_filter.FilterFIFOAssignment = CAN_RX_FIFO0; // assign to fifo0，接收器是FIFO0
+    //   can_filter.FilterActivation = ENABLE;           // enable can filter
+    //   can_filter.SlaveStartFilterBank = 14;
+
+    // can_filter_conf.FilterMode = CAN_FILTERMODE_IDMASK;                                          // 使用id list模式,即只有将rxid添加到过滤器中才会接收到,其他报文会被过滤
+    // can_filter_conf.FilterScale = CAN_FILTERSCALE_32BIT;                                         // 使用16位id模式,即只有低16位有效
+    // can_filter_conf.FilterFIFOAssignment = (_instance->tx_id & 1) ? CAN_RX_FIFO0 : CAN_RX_FIFO1; // 奇数id的模块会被分配到FIFO0,偶数id的模块会被分配到FIFO1
+    // can_filter_conf.SlaveStartFilterBank = 14;                                                   // 从第14个过滤器开始配置从机过滤器(在STM32的BxCAN控制器中CAN2是CAN1的从机)
+    // can_filter_conf.FilterIdHigh = 0;                                                            // 标识符寄存器
+    // can_filter_conf.FilterMaskIdHigh = 0;                                                        // 屏蔽寄存器
+    // can_filter_conf.FilterMaskIdLow = 0;                                                         // 屏蔽寄存器   set mask 0 to receive all can id
+    // can_filter_conf.FilterIdLow = 0;                                                             // 过滤器寄存器的低16位,因为使用STDID,所以只有低11位有效,高5位要填0
+    // can_filter_conf.FilterBank = can2_filter_idx;                                                // 根据can_handle判断是CAN1还是CAN2,然后自增
+    // can_filter_conf.FilterActivation = CAN_FILTER_ENABLE;                                        // 启用过滤器
+
+    can_filter_conf.FilterMode = CAN_FILTERMODE_IDLIST;                                                       // 使用id list模式,即只有将rxid添加到过滤器中才会接收到,其他报文会被过滤
+    can_filter_conf.FilterScale = CAN_FILTERSCALE_16BIT;                                                      // 使用16位id模式,即只有低16位有效
+    can_filter_conf.FilterFIFOAssignment = (_instance->tx_id & 1) ? CAN_RX_FIFO0 : CAN_RX_FIFO1;              // 奇数id的模块会被分配到FIFO0,偶数id的模块会被分配到FIFO1
+    can_filter_conf.SlaveStartFilterBank = 14;                                                                // 从第14个过滤器开始配置从机过滤器(在STM32的BxCAN控制器中CAN2是CAN1的从机)
+    can_filter_conf.FilterIdLow = _instance->rx_id << 5;                                                      // 过滤器寄存器的低16位,因为使用STDID,所以只有低11位有效,高5位要填0
+    can_filter_conf.FilterBank = _instance->can_handle == &hcan1 ? (can1_filter_idx++) : (can2_filter_idx++); // 根据can_handle判断是CAN1还是CAN2,然后自增
+    can_filter_conf.FilterActivation = CAN_FILTER_ENABLE;                                                     // 启用过滤器
 
     HAL_CAN_ConfigFilter(_instance->can_handle, &can_filter_conf);
 }
@@ -61,32 +83,38 @@ static void CANServiceInit()
 
 CAN_Instance *CANRegister(CAN_Init_Config_s *config)
 {
-    if (!idx) {
+    if (!idx)
+    {
         CANServiceInit(); // 第一次注册,先进行硬件初始化
     }
     if (idx >= CAN_MX_REGISTER_CNT) // 超过最大实例数
     {
-        while (1);
+        while (1)
+            ;
     }
-    for (size_t i = 0; i < idx; i++) { // 重复注册 | id重复
-        if (can_instance[i]->rx_id == config->rx_id && can_instance[i]->can_handle == config->can_handle) {
-            while (1);
+    for (size_t i = 0; i < idx; i++)
+    { // 重复注册 | id重复
+        if (can_instance[i]->rx_id == config->rx_id && can_instance[i]->can_handle == config->can_handle)
+        {
+            while (1)
+                ;
         }
     }
 
     CAN_Instance *instance = (CAN_Instance *)malloc(sizeof(CAN_Instance)); // 分配空间
-    memset(instance, 0, sizeof(CAN_Instance));                           // 分配的空间未必是0,所以要先清空
+    memset(instance, 0, sizeof(CAN_Instance));                             // 分配的空间未必是0,所以要先清空
     // 进行发送报文的配置
     instance->txconf.StdId = config->tx_id; // 发送id
-    instance->txconf.IDE   = CAN_ID_STD;    // 使用标准id,扩展id则使用CAN_ID_EXT(目前没有需求)
-    instance->txconf.RTR   = CAN_RTR_DATA;  // 发送数据帧
-    instance->txconf.DLC   = 0x08;          // 默认发送长度为8
+    instance->txconf.IDE = CAN_ID_STD;      // 使用标准id,扩展id则使用CAN_ID_EXT(目前没有需求)
+    instance->txconf.RTR = CAN_RTR_DATA;    // 发送数据帧
+    instance->txconf.DLC = 0x08;            // 默认发送长度为8
     // 设置回调函数和接收发送id
-    instance->can_handle          = config->can_handle;
-    instance->tx_id               = config->tx_id; // 好像没用,可以删掉
-    instance->rx_id               = config->rx_id;
+    instance->can_handle = config->can_handle;
+    instance->tx_id = config->tx_id; // 好像没用,可以删掉
+    instance->rx_id = config->rx_id;
     instance->can_module_callback = config->can_module_callback;
-    instance->id                  = config->id;
+    instance->id = config->id;
+    memcpy(&instance->config, config, sizeof(CAN_Init_Config_s)); // 保存初始化配置
 
     CANAddFilter(instance);         // 添加CAN过滤器规则
     can_instance[idx++] = instance; // 将实例保存到can_instance中
@@ -111,18 +139,92 @@ uint8_t CANTransmit(CAN_Instance *_instance, float timeout)
     }
     wait_time = DWT_GetTimeline_ms() - dwt_start;
     // tx_mailbox会保存实际填入了这一帧消息的邮箱,但是知道是哪个邮箱发的似乎也没啥用
-    if (HAL_CAN_AddTxMessage(_instance->can_handle, &_instance->txconf, _instance->tx_buff, &_instance->tx_mailbox)) {
+    if (HAL_CAN_AddTxMessage(_instance->can_handle, &_instance->txconf, _instance->tx_buff, &_instance->tx_mailbox))
+    {
         busy_count++;
         return 0;
     }
+    // else
+    //  if (HAL_CAN_AddTxMessage(_instance->can_handle, &_instance->txconf, _instance->tx_buff, &_instance->tx_mailbox) != HAL_OK)
+    // {
+    //     MX_CAN1_Init();
+    //   //  MX_CAN2_Init();
+    //     //  CAN_FilterTypeDef can_filter;
+
+    //     //   can_filter.FilterBank = 0;                      // filter 0
+    //     //   can_filter.FilterMode = CAN_FILTERMODE_IDMASK;  // 标识符屏蔽位模式
+    //     //   can_filter.FilterScale = CAN_FILTERSCALE_32BIT; // 过滤器位宽为单个32位
+    //     //   can_filter.FilterIdHigh = 0;                    // 标识符寄存器
+    //     //   can_filter.FilterIdLow = 0;                     // 标识符寄存器
+    //     //   can_filter.FilterMaskIdHigh = 0;                // 屏蔽寄存器
+    //     //   can_filter.FilterMaskIdLow = 0;                 // 屏蔽寄存器   set mask 0 to receive all can id
+    //     //   can_filter.FilterFIFOAssignment = CAN_RX_FIFO0; // assign to fifo0，接收器是FIFO0
+    //     //   can_filter.FilterActivation = ENABLE;           // enable can filter
+    //     //   can_filter.SlaveStartFilterBank = 14;
+
+    //     //   HAL_CAN_ConfigFilter(&hcan1, &can_filter);                         // init can filter
+    //     //   HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING); // 使能can的FIFO0中断
+    //     //   HAL_CAN_Start(&hcan1);                                             // 启动can1
+    //     // CANAddFilter(_instance);
+    //     // HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+    //     // HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
+    //     //  HAL_CAN_Start(_instance->can_handle);
+    // return 0; // 发送失败
+    // }
     return 1; // 发送成功
+}
+
+void can_9025send(int32_t v1)
+{
+
+    uint32_t send_mail_box;
+    CAN_TxHeaderTypeDef tx_header;
+    // uint8_t tx_data[8];
+
+    tx_header.StdId = 0x141;
+    tx_header.IDE = CAN_ID_STD;   // 标准帧
+    tx_header.RTR = CAN_RTR_DATA; // 数据帧
+
+    tx_header.DLC = 8; // 发送数据长度（字节）
+    uint8_t can_buff[8];
+    can_buff[0] = 0xA2;
+    can_buff[1] = 0;
+    can_buff[2] = 0;
+    can_buff[3] = 0;
+    can_buff[4] = *((uint8_t *)&v1);
+    can_buff[5] = *((uint8_t *)&v1 + 1);
+    can_buff[6] = *((uint8_t *)&v1 + 2);
+    can_buff[7] = *((uint8_t *)&v1 + 3);
+
+    if (HAL_CAN_AddTxMessage(&hcan1, &tx_header, can_buff, &send_mail_box) != HAL_OK)
+    {
+        MX_CAN1_Init();
+        //  MX_CAN2_Init();
+        CAN_FilterTypeDef can_filter;
+
+        can_filter.FilterBank = 0;                      // filter 0
+        can_filter.FilterMode = CAN_FILTERMODE_IDMASK;  // 标识符屏蔽位模式
+        can_filter.FilterScale = CAN_FILTERSCALE_32BIT; // 过滤器位宽为单个32位
+        can_filter.FilterIdHigh = 0;                    // 标识符寄存器
+        can_filter.FilterIdLow = 0;                     // 标识符寄存器
+        can_filter.FilterMaskIdHigh = 0;                // 屏蔽寄存器
+        can_filter.FilterMaskIdLow = 0;                 // 屏蔽寄存器   set mask 0 to receive all can id
+        can_filter.FilterFIFOAssignment = CAN_RX_FIFO0; // assign to fifo0，接收器是FIFO0
+        can_filter.FilterActivation = ENABLE;           // enable can filter
+        can_filter.SlaveStartFilterBank = 14;
+
+        HAL_CAN_ConfigFilter(&hcan1, &can_filter);                         // init can filter
+        HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING); // 使能can的FIFO0中断
+        HAL_CAN_Start(&hcan1);
+    }
 }
 
 void CANSetDLC(CAN_Instance *_instance, uint8_t length)
 {
     // 发送长度错误!检查调用参数是否出错,或出现野指针/越界访问
     if (length > 8 || length == 0) // 安全检查
-        while (1);
+        while (1)
+            ;
     _instance->txconf.DLC = length;
 }
 
@@ -142,8 +244,10 @@ static void CANFIFOxCallback(CAN_HandleTypeDef *_hcan, uint32_t fifox)
     while (HAL_CAN_GetRxFifoFillLevel(_hcan, fifox)) // FIFO不为空,有可能在其他中断时有多帧数据进入
     {
         HAL_CAN_GetRxMessage(_hcan, fifox, &rxconf, can_rx_buff); // 从FIFO中获取数据
-        for (size_t i = 0; i < idx; ++i) {                        // 两者相等说明这是要找的实例
-            if (_hcan == can_instance[i]->can_handle && rxconf.StdId == can_instance[i]->rx_id) {
+        for (size_t i = 0; i < idx; ++i)
+        { // 两者相等说明这是要找的实例
+            if (_hcan == can_instance[i]->can_handle && rxconf.StdId == can_instance[i]->rx_id)
+            {
                 if (can_instance[i]->can_module_callback != NULL) // 回调函数不为空就调用
                 {
                     can_instance[i]->rx_len = rxconf.DLC;                      // 保存接收到的数据长度

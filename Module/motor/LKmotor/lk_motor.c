@@ -34,23 +34,22 @@ static void LKMotorDecode(CAN_Instance *_instance)
     measure->feed_dt = DWT_GetDeltaT(&measure->feed_dwt_cnt);
 
     measure->cmd_mode = rx_buff[0];
+    measure->temperature = rx_buff[1];
+
+    measure->real_current = (1 - CURRENT_SMOOTH_COEF_LK) * measure->real_current +
+                            CURRENT_SMOOTH_COEF_LK * (float)((int16_t)(rx_buff[3] << 8 | rx_buff[2]));
+
+    measure->speed_dps = (1 - SPEED_SMOOTH_COEF_LK) * measure->speed_dps +
+                         SPEED_SMOOTH_COEF_LK * (float)((int16_t)(rx_buff[5] << 8 | rx_buff[4]));
 
     measure->last_ecd = measure->ecd;
     measure->ecd = (uint16_t)((rx_buff[7] << 8) | rx_buff[6]);
 
     measure->angle_single_round = ECD_ANGLE_COEF_LK * measure->ecd;
 
-    measure->speed_dps = (1 - SPEED_SMOOTH_COEF_LK) * measure->speed_dps +
-                         SPEED_SMOOTH_COEF_LK * (float)((int16_t)(rx_buff[5] << 8 | rx_buff[4]));
-
-    measure->real_current = (1 - CURRENT_SMOOTH_COEF_LK) * measure->real_current +
-                            CURRENT_SMOOTH_COEF_LK * (float)((int16_t)(rx_buff[3] << 8 | rx_buff[2]));
-
-    measure->temperature = rx_buff[1];
-
-    if (measure->ecd - measure->last_ecd > 8191) // -32768 啊？
+    if (measure->ecd - measure->last_ecd > 32768) // 65536 / 2 = 32768
         measure->total_round--;
-    else if (measure->ecd - measure->last_ecd < -8191)
+    else if (measure->ecd - measure->last_ecd < -32768)
         measure->total_round++;
     measure->total_angle = measure->total_round * 360 + measure->angle_single_round;
 }
@@ -58,6 +57,12 @@ static void LKMotorDecode(CAN_Instance *_instance)
 static void LKMotorLostCallback(void *motor_ptr)
 {
     LKMotor_Instance *motor __attribute__((unused)) = (LKMotor_Instance *)motor_ptr;
+    // __disable_irq();
+    // HAL_CAN_Init(&hcan1);
+    // HAL_CAN_Start(&hcan1);
+    // HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+    // HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
+    // __enable_irq();
 }
 
 LKMotor_Instance *LKMotorInit(Motor_Init_Config_s *config)
@@ -90,6 +95,7 @@ LKMotor_Instance *LKMotorInit(Motor_Init_Config_s *config)
     config->can_init_config.can_module_callback = LKMotorDecode;
     config->can_init_config.rx_id = 0x140 + config->can_init_config.tx_id;
     config->can_init_config.tx_id = 0x140 + config->can_init_config.tx_id;
+    // config->can_init_config.tx_id = 0x344 + config->can_init_config.tx_id;
     motor->motor_can_ins = CANRegister(&config->can_init_config);
 
     // DWT_GetDeltaT(&motor->measure.feed_dwt_cnt);
@@ -146,7 +152,7 @@ void LKMotorControl()
             if (motor_setting->speed_feedback_source == OTHER_FEED)
                 pid_measure = *motor_controller->other_speed_feedback_ptr;
             else // MOTOR_FEED
-                pid_measure = measure->speed_dps;
+                pid_measure = measure->speed_dps * 100;
             // 更新pid_ref进入下一个环
             pid_ref = PIDCalculate(&motor_controller->speed_PID, pid_measure, pid_ref);
             motor_controller->pid_speed_out = pid_ref; // 保存速度环输出
@@ -187,7 +193,7 @@ void LKMotorControl()
                 CANTransmit(motor->motor_can_ins, 0.2f);
                 break;
             case LK_SINGLE_MOTOR_SPEED:
-                motor->motor_can_ins->tx_buff[0] = 0xA2; // 电机速度控制指令
+                motor->motor_can_ins->tx_buff[0] = 0xA2; // 0xA2 电机速度控制指令
                 memcpy(motor->motor_can_ins->tx_buff + 4, &set32, sizeof(int32_t));
                 if (motor->stop_flag == MOTOR_STOP)
                 { // 若该电机处于停止状态,直接将发送buff置零

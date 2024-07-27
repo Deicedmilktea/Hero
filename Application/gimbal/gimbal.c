@@ -38,20 +38,23 @@ void gimbal_init()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 0.8,
-                .Ki = 0.01,
-                .Kd = 0.0135,
-                .Improve = PID_Integral_Limit | PID_OutputFilter,
+                .Kp = 6.8,  // 500//1
+                .Ki = 1,    // 1
+                .Kd = 0.45, // 0.01
+                .Improve = PID_Integral_Limit | PID_OutputFilter | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate | PID_Trapezoid_Intergral,
+                .CoefA = 5,
+                .CoefB = 0.5,
+                .Output_LPF_RC = 0.002f,
                 .IntegralLimit = 10,
-                .MaxOut = 50,
+                .MaxOut = 30,
             },
             .speed_PID = {
-                .Kp = 40, // 10
-                .Ki = 0,
+                .Kp = 2900, // 2000//40
+                .Ki = 100,
                 .Kd = 0,
-                .Improve = PID_Integral_Limit | PID_OutputFilter,
-                .IntegralLimit = 800,
-                .MaxOut = 1500,
+                .Improve = PID_Integral_Limit | PID_OutputFilter | PID_Trapezoid_Intergral,
+                .IntegralLimit = 10000,
+                .MaxOut = 100000, // 80000
             },
             .other_angle_feedback_ptr = &gimbal_ins->YawTotalAngle,
             // 还需要增加角速度额外反馈指针,注意方向,ins_task.md中有c板的bodyframe坐标系说明
@@ -62,10 +65,9 @@ void gimbal_init()
             .speed_feedback_source = OTHER_FEED,
             .outer_loop_type = ANGLE_LOOP,
             .close_loop_type = ANGLE_LOOP | SPEED_LOOP,
-            .feedback_reverse_flag = FEEDBACK_DIRECTION_NORMAL,
             .motor_reverse_flag = MOTOR_DIRECTION_NORMAL,
         },
-        .motor_work_type = LK_SINGLE_MOTOR_TORQUE,
+        .motor_work_type = LK_SINGLE_MOTOR_SPEED,
         .motor_type = LK9025,
     };
 
@@ -77,21 +79,21 @@ void gimbal_init()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 10, // 10
-                .Ki = 0.2,
-                .Kd = 1,
-                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement, // | PID_ChangingIntegrationRate,
-                .CoefB = 1.6,
-                .CoefA = 0.4,
-                .IntegralLimit = 400,
-                .MaxOut = 500,
+                .Kp = 2.5, // 10
+                .Ki = 0,   // 5
+                .Kd = 0.3,
+                .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate,
+                .CoefA = 1.8,
+                .CoefB = 0.2,
+                .IntegralLimit = 30,
+                .MaxOut = 50,
             },
             .speed_PID = {
-                .Kp = 20, // 50
-                .Ki = 10, // 350
-                .Kd = 0,  // 0
+                .Kp = 500, // 50
+                .Ki = 50,  // 350
+                .Kd = 0,   // 0
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-                .IntegralLimit = 500,
+                .IntegralLimit = 1000,
                 .MaxOut = 4000,
             },
             .other_angle_feedback_ptr = &gimbal_ins->Roll,
@@ -134,7 +136,7 @@ void gimbal_task()
     }
 
     // LKMotorStop(yaw_motor);
-    DJIMotorStop(pitch_motor);
+    // DJIMotorStop(pitch_motor);
 
     LKMotorSetRef(yaw_motor, gimbal_cmd_recv.yaw); // yaw和pitch会在robot_cmd中处理好多圈和单圈
     DJIMotorSetRef(pitch_motor, gimbal_cmd_recv.pitch);

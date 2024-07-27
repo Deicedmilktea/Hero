@@ -31,7 +31,6 @@ static Chassis_Upload_Data_s chassis_feedback_data; // 底盘回传的反馈数�
 static DJIMotor_Instance *motor_lf, *motor_rf, *motor_lb, *motor_rb, *loader; // left right forward back
 static float chassis_vx, chassis_vy, chassis_wz;                              // 将云台系的速度投影到底盘
 static float vt_lf, vt_rf, vt_lb, vt_rb;                                      // 底盘速度解算后的临时输出,待进行限幅
-static int16_t chassis_wz_buff[2] = {24000, 36000};                           // 旋转速度
 
 static Supcap_Instance *cap;            // 超级电容
 static PID_Instance chassis_follow_pid; // 底盘跟随PID
@@ -103,10 +102,10 @@ void chassis_init()
 
     // 底盘跟随PID
     PID_Init_Config_s chassis_follow_pid_conf = {
-        .Kp = 70,
+        .Kp = 70, // 70
         .Ki = 0,
         .Kd = 0,
-        .MaxOut = 12000,
+        .MaxOut = 10000, // 12000
         .DeadBand = 1.5,
         .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement | PID_OutputFilter,
         .Derivative_LPF_RC = 0.05,
@@ -207,10 +206,10 @@ void chassis_task()
         DJIMotorEnable(motor_rb);
     }
 
-    DJIMotorStop(motor_lf);
-    DJIMotorStop(motor_rf);
-    DJIMotorStop(motor_lb);
-    DJIMotorStop(motor_rb);
+    // DJIMotorStop(motor_lf);
+    // DJIMotorStop(motor_rf);
+    // DJIMotorStop(motor_lb);
+    // DJIMotorStop(motor_rb);
 
     if (chassis_cmd_recv.robot_status == ROBOT_STOP)
         DJIMotorStop(loader);
@@ -221,17 +220,11 @@ void chassis_task()
     float sin_theta = arm_sin_f32(chassis_cmd_recv.offset_angle * DEGREE_2_RAD);
     chassis_vx = chassis_cmd_recv.vx * cos_theta - chassis_cmd_recv.vy * sin_theta;
     chassis_vy = chassis_cmd_recv.vx * sin_theta + chassis_cmd_recv.vy * cos_theta;
-
-    switch (chassis_cmd_recv.chassis_mode)
-    {
-    case CHASSIS_ROTATE:
-        chassis_wz = (referee_data->GameRobotState.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
-        break;
-    default:
-        // chassis_wz = -1.5f * chassis_cmd_recv.offset_angle * abs(chassis_cmd_recv.offset_angle);
-        chassis_wz = -PIDCalculate(&chassis_follow_pid, chassis_cmd_recv.offset_angle, 0);
-        break;
-    }
+    if (chassis_cmd_recv.wz)
+        chassis_wz = chassis_cmd_recv.wz;
+    else
+        chassis_wz = PIDCalculate(&chassis_follow_pid, chassis_cmd_recv.offset_angle, 0);
+    // chassis_wz = -1.5f * chassis_cmd_recv.offset_angle * abs(chassis_cmd_recv.offset_angle);
 
     MecanumCalculate();   // 计算底盘速度
     LimitChassisOutput(); // 限制底盘输出
