@@ -18,8 +18,8 @@
 
 /* 开发板类型定义,烧录时注意不要弄错对应功能;修改定义后需要重新编译,只能存在一个定义! */
 // #define ONE_BOARD // 单板控制整车
-// #define CHASSIS_BOARD // 底盘板
-#define GIMBAL_BOARD // 云台板
+#define CHASSIS_BOARD // 底盘板
+// #define GIMBAL_BOARD // 云台板
 
 #define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
@@ -36,13 +36,13 @@
 #define PITCH_MIN -6                //-9   // 云台竖直方向最小角度 (注意反馈如果是陀螺仪，则填写陀螺仪的角度)
 // 发射参数
 #define ONE_BULLET_DELTA_ANGLE 60    // 发射一发弹丸拨盘转动的距离,由机械设计图纸给出
-#define REDUCTION_RATIO_LOADER 51.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
+#define REDUCTION_RATIO_LOADER 71.0f // 拨盘电机的减速比,英雄需要修改为3508的19.0f
 #define NUM_PER_CIRCLE 6             // 拨盘一圈的装载量
 #define SHOOT_DELAY 1000             // 发射后的延迟时间,单位ms
-#define TRIGGER_SINGLE_ANGLE 3060    // 单发拨盘转动的角度,51*60=3060
+#define TRIGGER_SINGLE_ANGLE 4260    // 单发拨盘转动的角度,71*60=4260
 #define LENS_THRESHOLD_CURRENT 1500  // 判断lens阈值电流
 #define LENS_PREPARE_SPEED 6000      // lens准备阶段速度
-#define LENS_MOVE_ANGLE 2254         // lens移动角度
+#define LENS_MOVE_ANGLE 2350         // lens移动角度
 #define VIDEO_MOVE_ANGLE 5045        // video移动角度
 // 机器人底盘修改的参数,单位为mm(毫米)
 #define WHEEL_BASE 462                          // 纵向轴距(前进后退方向)

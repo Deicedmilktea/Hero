@@ -237,7 +237,7 @@ static void MyUIRefresh(referee_info_t *referee_recv_info, Referee_Interactive_i
     if (_Interactive_data->Referee_Interactive_Flag.Power_flag == 1)
     {
         UIFloatDraw(&UI_Energy[1], "sd5", UI_Graph_Change, 8, UI_Color_Green, 18, 2, 3, 970, 210, _Interactive_data->Supcap_Power_Data.Supcap_power);
-        UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 30, 722, 160, (uint32_t)722 + (_Interactive_data->Supcap_Power_Data.Supcap_power / 1000 - 9) * 17, 160);
+        UILineDraw(&UI_Energy[2], "sd6", UI_Graph_Change, 8, UI_Color_Pink, 36, 722, 160, (uint32_t)722 + (_Interactive_data->Supcap_Power_Data.Supcap_power / 1000.0f - 9) / 15 * 496, 160);
         UIGraphRefresh(&referee_recv_info->referee_id, 2, UI_Energy[1], UI_Energy[2]);
         _Interactive_data->Referee_Interactive_Flag.Power_flag = 0;
     }

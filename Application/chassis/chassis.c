@@ -188,7 +188,7 @@ void chassis_task()
     ui_data.friction_mode = chassis_cmd_recv.friction_mode;
     ui_data.pitch = chassis_cmd_recv.pitch;
     ui_data.is_tracking = chassis_cmd_recv.is_tracking;
-    ui_data.Supcap_last_Power_Data.Supcap_power = cap->cap_rx_data.voltage;
+    ui_data.Supcap_Power_Data.Supcap_power = cap->cap_rx_data.voltage;
 
     // chassis
     if (chassis_cmd_recv.chassis_mode == CHASSIS_ZERO_FORCE || chassis_cmd_recv.robot_status == ROBOT_STOP)
@@ -235,10 +235,10 @@ void chassis_task()
     loader_task();
 
     if (chassis_cmd_recv.supcap_mode == SUPCAP_ON)
-        SupcapSetData(referee_data->PowerHeatData.buffer_energy, referee_data->PowerHeatData.chassis_power, SUPCAP_ON); // 超级电容数据设置
+        SupcapSetData((uint16_t)referee_data->PowerHeatData.buffer_energy, (uint16_t)referee_data->GameRobotState.chassis_power_limit, SUPCAP_ON); // 超级电容数据设置
     else
-        SupcapSetData(referee_data->PowerHeatData.buffer_energy, referee_data->PowerHeatData.chassis_power, SUPCAP_OFF); // 超级电容数据设置
-    SupcapSend();                                                                                                        // 超级电容数据发送
+        SupcapSetData((uint16_t)referee_data->PowerHeatData.buffer_energy, (uint16_t)referee_data->GameRobotState.chassis_power_limit, SUPCAP_OFF); // 超级电容数据设置
+    SupcapSend();                                                                                                                                   // 超级电容数据发送
 
     chassis_feedback_data.chassis_ins_pitch = chassis_ins->Roll;
     chassis_feedback_data.robot_level = referee_data->GameRobotState.robot_level;

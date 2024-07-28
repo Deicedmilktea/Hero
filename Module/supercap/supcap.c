@@ -52,12 +52,18 @@ void SupcapSetData(uint16_t buffer, uint16_t power, uint8_t state)
 
 void SupcapSend()
 {
-    uint8_t data[5];
-    memcpy(&data[0], &super_cap_instance->cap_tx_data.buffer, 2);
-    memcpy(&data[2], &super_cap_instance->cap_tx_data.power, 2);
-    data[4] = super_cap_instance->cap_tx_data.state;
+    uint8_t data[8] = {0};
+    // memcpy(&data[0], &super_cap_instance->cap_tx_data.buffer, 2);
+    // memcpy(&data[2], &super_cap_instance->cap_tx_data.power, 2);
+    // data[4] = super_cap_instance->cap_tx_data.state;
 
-    memcpy(super_cap_instance->can_ins->tx_buff, data, 5);
+    // memcpy(super_cap_instance->can_ins->tx_buff, data, 5);
+    data[0] = (super_cap_instance->cap_tx_data.buffer >> 8) & 0xff;
+    data[1] = super_cap_instance->cap_tx_data.buffer & 0xff;
+    data[2] = (super_cap_instance->cap_tx_data.power >> 8) & 0xff;
+    data[3] = super_cap_instance->cap_tx_data.power & 0xff;
+    data[4] = super_cap_instance->cap_tx_data.state;
+    memcpy(super_cap_instance->can_ins->tx_buff, data, 8);
     CANTransmit(super_cap_instance->can_ins, 1);
 }
 

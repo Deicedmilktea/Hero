@@ -53,9 +53,9 @@ static uint8_t is_lens_ready = 0;  // 镜头到达指定位置
 extern uint8_t is_remote_online;   // 遥控器在线状态
 
 static int32_t chassis_speed_max;                                                                               // 底盘速度最大值
-static int32_t chassis_speed_buff[10] = {10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 20000}; // 底盘速度缓冲区
+static int32_t chassis_speed_buff[10] = {25000, 27000, 29000, 31000, 33000, 35000, 35000, 35000, 35000, 35000}; // 底盘速度缓冲区
 static int32_t chassis_wz_max;                                                                                  // 底盘旋转速度最大值
-static int16_t chassis_wz_buff[2] = {3000, 6000};                                                               // 旋转速度
+static int16_t chassis_wz_buff[2] = {6000, 8000};                                                               // 旋转速度
 static int32_t forward_speed, back_speed, left_speed, right_speed, wz_speed;                                    // 底盘速度
 
 static void CalcOffsetAngle();   // 计算云台偏转角度
@@ -216,7 +216,7 @@ static void RemoteMouseKeySet()
     {
     case 1:
         chassis_cmd_send.supcap_mode = SUPCAP_ON;
-        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 12000;
+        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 6000;
         chassis_wz_max = (chassis_fetch_data.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
         break;
     default:
@@ -383,11 +383,13 @@ static void VideoMouseKeySet()
     {
     case 1:
         chassis_cmd_send.supcap_mode = SUPCAP_ON;
-        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 12000;
+        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 6000;
+        chassis_wz_max = (chassis_fetch_data.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
         break;
     default:
         chassis_cmd_send.supcap_mode = SUPCAP_OFF;
         chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1];
+        chassis_wz_max = (chassis_fetch_data.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
         break;
     }
 
