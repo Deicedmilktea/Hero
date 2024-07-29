@@ -104,7 +104,7 @@ void chassis_init()
     PID_Init_Config_s chassis_follow_pid_conf = {
         .Kp = 70, // 70
         .Ki = 0,
-        .Kd = 0,
+        .Kd = 1.5,
         .MaxOut = 10000, // 12000
         .DeadBand = 1.5,
         .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement | PID_OutputFilter,

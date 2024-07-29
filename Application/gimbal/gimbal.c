@@ -39,12 +39,13 @@ void gimbal_init()
         .controller_param_init_config = {
             .angle_PID = {
                 .Kp = 6.8,  // 500//1
-                .Ki = 1,    // 1
+                .Ki = 0,    // 1
                 .Kd = 0.45, // 0.01
                 .Improve = PID_Integral_Limit | PID_OutputFilter | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate | PID_Trapezoid_Intergral,
                 .CoefA = 5,
                 .CoefB = 0.5,
                 .Output_LPF_RC = 0.002f,
+                .DeadBand = 0.1,
                 .IntegralLimit = 10,
                 .MaxOut = 30,
             },
