@@ -311,8 +311,10 @@ static void LimitChassisOutput()
             Plimit = 0.05;
         else
             Plimit = 1;
+        // // 待测试
         // if (Watch_Buffer <= 60 && Watch_Buffer > 0)
-        //     Plimit = (float)(60 - Watch_Buffer / 60);
+        //     Plimit = pow(1.0f - (60.0f - Watch_Buffer) / 60.0f, 3);
+        // Plimit = sqrt(1 - ((60.0f - Watch_Buffer) / 60.0f) ^ 2);
         // else
         //     Plimit = 1;
     }
