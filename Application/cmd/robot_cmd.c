@@ -53,9 +53,9 @@ static uint8_t is_lens_ready = 0;  // 镜头到达指定位置
 extern uint8_t is_remote_online;   // 遥控器在线状态
 
 static int32_t chassis_speed_max;                                                                               // 底盘速度最大值
-static int32_t chassis_speed_buff[10] = {25000, 27000, 29000, 31000, 33000, 35000, 35000, 35000, 35000, 35000}; // 底盘速度缓冲区
+static int32_t chassis_speed_buff[10] = {30000, 32000, 34000, 36000, 38000, 40000, 42000, 44000, 46000, 48000}; // 底盘速度缓冲区
 static int32_t chassis_wz_max;                                                                                  // 底盘旋转速度最大值
-static int16_t chassis_wz_buff[2] = {6000, 8000};                                                               // 旋转速度
+static int16_t chassis_wz_buff[2] = {10000, 12000};                                                             // 旋转速度
 static int32_t forward_speed, back_speed, left_speed, right_speed, wz_speed;                                    // 底盘速度
 
 static void CalcOffsetAngle();   // 计算云台偏转角度
@@ -216,7 +216,7 @@ static void RemoteMouseKeySet()
     {
     case 1:
         chassis_cmd_send.supcap_mode = SUPCAP_ON;
-        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 6000;
+        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 10000;
         chassis_wz_max = (chassis_fetch_data.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
         break;
     default:
@@ -286,15 +286,19 @@ static void RemoteMouseKeySet()
     }
 
     // gimbal
-    if (rc_data[TEMP].mouse.press_r && vision_recv_data->is_tracking) // 视觉
+    if (chassis_fetch_data.robot_HP) // 有血才能控制，避免复活乱动
     {
-        gimbal_cmd_send.yaw = vision_recv_data->yaw;
-        gimbal_cmd_send.pitch = vision_recv_data->pitch;
-    }
-    else
-    {
-        gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 5; // 系数待测
-        gimbal_cmd_send.pitch -= (float)rc_data[TEMP].mouse.y / 660 * 5;
+        if (rc_data[TEMP].mouse.press_r && vision_recv_data->is_tracking) // 视觉
+        {
+            gimbal_cmd_send.yaw = vision_recv_data->yaw;
+            gimbal_cmd_send.pitch = vision_recv_data->pitch;
+        }
+        else
+        {
+            gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 5; // 系数待测
+            if (!rc_data[TEMP].key[KEY_PRESS].ctrl)
+                gimbal_cmd_send.pitch -= (float)rc_data[TEMP].mouse.y / 660 * 5;
+        }
     }
 
     limit_gimbal();
@@ -383,7 +387,7 @@ static void VideoMouseKeySet()
     {
     case 1:
         chassis_cmd_send.supcap_mode = SUPCAP_ON;
-        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 6000;
+        chassis_speed_max = chassis_speed_buff[chassis_fetch_data.robot_level - 1] + 10000;
         chassis_wz_max = (chassis_fetch_data.robot_level < 6) ? chassis_wz_buff[0] : chassis_wz_buff[1];
         break;
     default:
@@ -453,16 +457,21 @@ static void VideoMouseKeySet()
     }
 
     // gimbal
-    if (video_data[TEMP].key_data.right_button_down && vision_recv_data->is_tracking) // 视觉
+    if (chassis_fetch_data.robot_HP) // 有血才能控制，避免复活乱动
     {
-        gimbal_cmd_send.yaw = vision_recv_data->yaw;
-        gimbal_cmd_send.pitch = vision_recv_data->pitch;
+        if (video_data[TEMP].key_data.right_button_down && vision_recv_data->is_tracking) // 视觉
+        {
+            gimbal_cmd_send.yaw = vision_recv_data->yaw;
+            gimbal_cmd_send.pitch = vision_recv_data->pitch;
+        }
+        else
+        {
+            gimbal_cmd_send.yaw -= (float)video_data[TEMP].key_data.mouse_x / 660 * 5; // 系数待测
+            if (!video_data[TEMP].key[KEY_PRESS].ctrl)
+                gimbal_cmd_send.pitch -= (float)video_data[TEMP].key_data.mouse_y / 660 * 5;
+        }
     }
-    else
-    {
-        gimbal_cmd_send.yaw -= (float)video_data[TEMP].key_data.mouse_x / 660 * 5; // 系数待测
-        gimbal_cmd_send.pitch -= (float)video_data[TEMP].key_data.mouse_y / 660 * 5;
-    }
+
     limit_gimbal();
 
     // Q键控制拨盘模式
@@ -583,10 +592,10 @@ static void VisionControlSet()
  */
 static void limit_gimbal()
 {
-    if (gimbal_cmd_send.pitch > PITCH_MAX) // 软件限位
-        gimbal_cmd_send.pitch = PITCH_MAX;
-    else if (gimbal_cmd_send.pitch < PITCH_MIN)
-        gimbal_cmd_send.pitch = PITCH_MIN;
+    if (gimbal_cmd_send.pitch > PITCH_MAX + chassis_fetch_data.chassis_ins_pitch) // 软件限位
+        gimbal_cmd_send.pitch = PITCH_MAX + chassis_fetch_data.chassis_ins_pitch;
+    else if (gimbal_cmd_send.pitch < PITCH_MIN + chassis_fetch_data.chassis_ins_pitch)
+        gimbal_cmd_send.pitch = PITCH_MIN + chassis_fetch_data.chassis_ins_pitch;
 }
 
 /**

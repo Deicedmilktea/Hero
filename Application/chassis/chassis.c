@@ -127,7 +127,7 @@ void chassis_init()
                 .Kd = 3,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 5000,
-                .MaxOut = 10000,
+                .MaxOut = 20000,
             },
             .speed_PID = {
                 .Kp = 10,  // 10
@@ -138,12 +138,12 @@ void chassis_init()
                 .MaxOut = 10000,
             },
             .current_PID = {
-                .Kp = 1, // 0.7
-                .Ki = 0, // 0.1
+                .Kp = 1, // 1
+                .Ki = 0,
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 5000,
-                .MaxOut = 10000,
+                .MaxOut = 20000,
             },
         },
         .controller_setting_init_config = {
@@ -242,6 +242,7 @@ void chassis_task()
 
     chassis_feedback_data.chassis_ins_pitch = chassis_ins->Roll;
     chassis_feedback_data.robot_level = referee_data->GameRobotState.robot_level;
+    chassis_feedback_data.robot_HP = referee_data->GameRobotState.current_HP;
     CANCommSend(chasiss_can_comm, (uint8_t *)&chassis_feedback_data);
 }
 
@@ -264,7 +265,35 @@ static void MecanumCalculate()
 static void LimitChassisOutput()
 {
     float Watch_Buffer = referee_data->PowerHeatData.buffer_energy; // 获取裁判系统的电量数据
-    float Plimit;                                                   // 限制比例
+    float Plimit, Klimit;                                           // 限制比例
+    // float Scaling_lf, Scaling_rf, Scaling_lb, Scaling_rb;
+    // int32_t max_err = 314572;
+
+    // int32_t sum_err = (fabs(vt_lf - motor_lf->measure.speed_aps) +
+    //                    fabs(vt_rf - motor_rf->measure.speed_aps) +
+    //                    fabs(vt_lb - motor_lb->measure.speed_aps) +
+    //                    fabs(vt_rb - motor_rb->measure.speed_aps)); // fabs是求绝对值，这里获取了4个轮子的差值求和
+
+    // /*期望滞后占比环，增益个体加速度*/
+    // if (sum_err)
+    // {
+    //     Scaling_lf = (vt_lf - motor_lf->measure.speed_aps) / sum_err;
+    //     Scaling_rf = (vt_rf - motor_rf->measure.speed_aps) / sum_err;
+    //     Scaling_lb = (vt_lb - motor_lb->measure.speed_aps) / sum_err;
+    //     Scaling_rb = (vt_rb - motor_rb->measure.speed_aps) / sum_err; // 求比例，4个scaling求和为1
+    // }
+    // else
+    // {
+    //     Scaling_lf = 0.25, Scaling_rf = 0.25, Scaling_lb = 0.25, Scaling_rb = 0.25;
+    // }
+
+    // /*功率满输出占比环，车总增益加速度*/
+    // Klimit = sum_err / max_err;
+
+    // if (Klimit > 1)
+    //     Klimit = 1;
+    // else if (Klimit < -1)
+    //     Klimit = -1; // 限制绝对值不能超过1，也就是Chassis_pidout一定要小于某个速度值，不能超调
 
     if (chassis_cmd_recv.supcap_mode == SUPCAP_OFF)
     {
@@ -282,12 +311,20 @@ static void LimitChassisOutput()
             Plimit = 0.05;
         else
             Plimit = 1;
+        // if (Watch_Buffer <= 60 && Watch_Buffer > 0)
+        //     Plimit = (float)(60 - Watch_Buffer / 60);
+        // else
+        //     Plimit = 1;
     }
 
     else
         Plimit = 1;
 
     // 完成功率限制后进行电机参考输入设定
+    // DJIMotorSetRef(motor_lf, Scaling_lf * vt_lf * Plimit);
+    // DJIMotorSetRef(motor_rf, Scaling_rf * vt_rf * Plimit);
+    // DJIMotorSetRef(motor_lb, Scaling_lb * vt_lb * Plimit);
+    // DJIMotorSetRef(motor_rb, Scaling_rb * vt_rb * Plimit);
     DJIMotorSetRef(motor_lf, vt_lf * Plimit);
     DJIMotorSetRef(motor_rf, vt_rf * Plimit);
     DJIMotorSetRef(motor_lb, vt_lb * Plimit);

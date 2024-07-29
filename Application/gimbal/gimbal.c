@@ -79,21 +79,22 @@ void gimbal_init()
         },
         .controller_param_init_config = {
             .angle_PID = {
-                .Kp = 2.5, // 10
-                .Ki = 0,   // 5
-                .Kd = 0.3,
+                .Kp = 2, // 2.5
+                .Ki = 0, // 5
+                .Kd = 0.1125,
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement | PID_ChangingIntegrationRate,
                 .CoefA = 1.8,
                 .CoefB = 0.2,
+                .DeadBand = 0.1,
                 .IntegralLimit = 30,
                 .MaxOut = 50,
             },
             .speed_PID = {
-                .Kp = 500, // 50
-                .Ki = 50,  // 350
-                .Kd = 0,   // 0
+                .Kp = 1000, // 500
+                .Ki = 0,    // 50
+                .Kd = 0,    // 0
                 .Improve = PID_Trapezoid_Intergral | PID_Integral_Limit | PID_Derivative_On_Measurement,
-                .IntegralLimit = 1000,
+                .IntegralLimit = 500,
                 .MaxOut = 4000,
             },
             .other_angle_feedback_ptr = &gimbal_ins->Roll,
