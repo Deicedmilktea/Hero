@@ -122,15 +122,50 @@ void MyUIInit()
 
     // 绘制车辆状态标志，动态
     // 由于初始化时xxx_last_mode默认为0，所以此处对应UI也应该设为0时对应的UI，防止模式不变的情况下无法置位flag，导致UI无法刷新
-    UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 390, 750, "stop");
+    // UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 390, 750, "stop  ");
+    // UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[0]);
+    // UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 360, 700, "off");
+    // UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[1]);
+    // UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 650, "stop  ");
+    // UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
+    // UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 600, "normal");
+    // UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
+    // UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 550, "normal  ");
+    // UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
+
+    // chassis
+    if (Interactive_data->chassis_mode == CHASSIS_ZERO_FORCE)
+        UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 390, 750, "stop  ");
+    else if (Interactive_data->chassis_mode == CHASSIS_FOLLOW)
+        UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 390, 750, "follow");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[0]);
-    UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 360, 700, "off");
+
+    // supcap
+    UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 360, 700, Interactive_data->supcap_mode == SUPCAP_OFF ? "off" : "on ");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[1]);
-    UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 650, "stop");
+
+    // friction
+    if (Interactive_data->friction_mode == FRICTION_NORMAL)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "normal");
+    else if (Interactive_data->friction_mode == FRICTION_LOW)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "low   ");
+    else if (Interactive_data->friction_mode == FRICTION_HIGH)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "high  ");
+    else if (Interactive_data->friction_mode == FRICTION_STOP)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "stop  ");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
-    UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 600, "normal");
+
+    // loader
+    if (Interactive_data->loader_mode == LOAD_SPEED)
+        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "speed ");
+    else if (Interactive_data->loader_mode == LOAD_BUFF)
+        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "buff  ");
+    else
+        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "normal");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
-    UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 550, "normal");
+
+    // video
+    UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 550, Interactive_data->video_mode == VIDEO_NORMAL ? "normal  " : "adaptive");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
 
     // 底盘功率显示，静态
@@ -216,7 +251,7 @@ static void MyUIRefresh(referee_info_t *referee_recv_info, Referee_Interactive_i
     if (_Interactive_data->Referee_Interactive_Flag.shoot_flag == 1)
     {
         if (_Interactive_data->loader_mode == LOAD_SPEED)
-            UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "speed");
+            UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "speed ");
         else if (_Interactive_data->loader_mode == LOAD_BUFF)
             UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "buff  ");
         else

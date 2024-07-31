@@ -55,8 +55,9 @@ extern uint8_t is_remote_online;   // 遥控器在线状态
 static int32_t chassis_speed_max;                                                                               // 底盘速度最大值
 static int32_t chassis_speed_buff[10] = {30000, 32000, 34000, 36000, 38000, 40000, 42000, 44000, 46000, 48000}; // 底盘速度缓冲区
 static int32_t chassis_wz_max;                                                                                  // 底盘旋转速度最大值
-static int16_t chassis_wz_buff[2] = {10000, 12000};                                                             // 旋转速度
+static int16_t chassis_wz_buff[2] = {6000, 8000};                                                               // 旋转速度
 static int32_t forward_speed, back_speed, left_speed, right_speed, wz_speed;                                    // 底盘速度
+static uint8_t shoot_index = 4;
 
 static void CalcOffsetAngle();   // 计算云台偏转角度
 static void RemoteControlSet();  // 遥控器控制
@@ -197,6 +198,7 @@ static void RemoteControlSet()
     // 底盘参数,目前没有加入小陀螺(调试似乎暂时没有必要),系数需要调整
     chassis_cmd_send.vx = rc_data[TEMP].rc.rocker_r_ / 660.0f * chassis_speed_buff[0]; // _水平方向
     chassis_cmd_send.vy = rc_data[TEMP].rc.rocker_r1 / 660.0f * chassis_speed_buff[0]; // 1数值方向
+    chassis_cmd_send.wz = rc_data[TEMP].rc.dial * 15;
 
     // 云台参数
     gimbal_cmd_send.yaw -= 0.001f * (float)rc_data[TEMP].rc.rocker_l_; // 系数待测
@@ -295,9 +297,9 @@ static void RemoteMouseKeySet()
         }
         else
         {
-            gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 5; // 系数待测
+            gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 5 + (float)rc_data[TEMP].rc.rocker_l_ * 0.001; // 系数待测
             if (!rc_data[TEMP].key[KEY_PRESS].ctrl)
-                gimbal_cmd_send.pitch -= (float)rc_data[TEMP].mouse.y / 660 * 5;
+                gimbal_cmd_send.pitch -= (float)rc_data[TEMP].mouse.y / 660 * 5 + (float)rc_data[TEMP].rc.rocker_l1 * 0.001;
         }
     }
 
@@ -345,6 +347,16 @@ static void RemoteMouseKeySet()
         chassis_cmd_send.friction_mode = FRICTION_STOP;
         break;
     }
+    // if (rc_data[TEMP].key[KEY_PRESS].e)
+    //     shoot_index++;
+    // else if (rc_data[TEMP].key[KEY_PRESS_WITH_CTRL].e)
+    //     shoot_index--;
+
+    // if (shoot_index > 8)
+    //     shoot_index = 8;
+    // else if (shoot_index < 0)
+    //     shoot_index = 0;
+    // shoot_cmd_send.friction_mode = shoot_index;
 
     // B键切换图传模式，normal，adaptive
     switch (rc_data[TEMP].key_count[KEY_PRESS][Key_B] % 2)

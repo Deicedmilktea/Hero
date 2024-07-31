@@ -104,7 +104,7 @@ void chassis_init()
     PID_Init_Config_s chassis_follow_pid_conf = {
         .Kp = 70, // 70
         .Ki = 0,
-        .Kd = 1.5,
+        .Kd = 2,
         .MaxOut = 10000, // 12000
         .DeadBand = 1.5,
         .Improve = PID_DerivativeFilter | PID_Derivative_On_Measurement | PID_OutputFilter,
@@ -135,7 +135,7 @@ void chassis_init()
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 5000,
-                .MaxOut = 10000,
+                .MaxOut = 20000,
             },
             .current_PID = {
                 .Kp = 1, // 1
@@ -297,26 +297,25 @@ static void LimitChassisOutput()
 
     if (chassis_cmd_recv.supcap_mode == SUPCAP_OFF)
     {
-        if (Watch_Buffer <= 60 && Watch_Buffer >= 40)
-            Plimit = 0.95; // 近似于以一个线性来约束比例（为了保守可以调低Plimit，但会影响响应速度）
-        else if (Watch_Buffer < 40 && Watch_Buffer >= 35)
-            Plimit = 0.75;
-        else if (Watch_Buffer < 35 && Watch_Buffer >= 30)
-            Plimit = 0.5;
-        else if (Watch_Buffer < 30 && Watch_Buffer >= 20)
-            Plimit = 0.25;
-        else if (Watch_Buffer < 20 && Watch_Buffer >= 10)
-            Plimit = 0.125;
-        else if (Watch_Buffer < 10 && Watch_Buffer > 0)
-            Plimit = 0.05;
-        else
-            Plimit = 1;
-        // // 待测试
-        // if (Watch_Buffer <= 60 && Watch_Buffer > 0)
-        //     Plimit = pow(1.0f - (60.0f - Watch_Buffer) / 60.0f, 3);
-        // Plimit = sqrt(1 - ((60.0f - Watch_Buffer) / 60.0f) ^ 2);
+        // if (Watch_Buffer <= 60 && Watch_Buffer >= 40)
+        //     Plimit = 0.95; // 近似于以一个线性来约束比例（为了保守可以调低Plimit，但会影响响应速度）
+        // else if (Watch_Buffer < 40 && Watch_Buffer >= 35)
+        //     Plimit = 0.75;
+        // else if (Watch_Buffer < 35 && Watch_Buffer >= 30)
+        //     Plimit = 0.5;
+        // else if (Watch_Buffer < 30 && Watch_Buffer >= 20)
+        //     Plimit = 0.25;
+        // else if (Watch_Buffer < 20 && Watch_Buffer >= 10)
+        //     Plimit = 0.125;
+        // else if (Watch_Buffer < 10 && Watch_Buffer > 0)
+        //     Plimit = 0.05;
         // else
         //     Plimit = 1;
+        // 待测试
+        if (referee_data->GameState.game_progress == 4) // 赛中
+            Plimit = pow(1.0f - (60.0f - Watch_Buffer) / 60.0f, 0.35);
+        else
+            Plimit = 1;
     }
 
     else
