@@ -297,9 +297,17 @@ static void RemoteMouseKeySet()
         }
         else
         {
-            gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 5 + (float)rc_data[TEMP].rc.rocker_l_ * 0.001; // 系数待测
-            if (!rc_data[TEMP].key[KEY_PRESS].ctrl)
+            if (rc_data[TEMP].key[KEY_PRESS].ctrl)
+            {
+                gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 0.5 + (float)rc_data[TEMP].rc.rocker_l_ * 0.001; // 系数待测
+                gimbal_cmd_send.pitch_mode = PITCH_OFF;
+            }
+            else
+            {
+                gimbal_cmd_send.yaw -= (float)rc_data[TEMP].mouse.x / 660 * 5 + (float)rc_data[TEMP].rc.rocker_l_ * 0.001; // 系数待测
                 gimbal_cmd_send.pitch -= (float)rc_data[TEMP].mouse.y / 660 * 5 + (float)rc_data[TEMP].rc.rocker_l1 * 0.001;
+                gimbal_cmd_send.pitch_mode = PITCH_ON;
+            }
         }
     }
 
@@ -478,9 +486,17 @@ static void VideoMouseKeySet()
         }
         else
         {
-            gimbal_cmd_send.yaw -= (float)video_data[TEMP].key_data.mouse_x / 660 * 5; // 系数待测
-            if (!video_data[TEMP].key[KEY_PRESS].ctrl)
+            if (video_data[TEMP].key[KEY_PRESS].ctrl)
+            {
+                gimbal_cmd_send.yaw -= (float)video_data[TEMP].key_data.mouse_x / 660 * 0.5; // 系数待测
+                gimbal_cmd_send.pitch_mode = PITCH_OFF;
+            }
+            else
+            {
+                gimbal_cmd_send.yaw -= (float)video_data[TEMP].key_data.mouse_x / 660 * 5; // 系数待测
                 gimbal_cmd_send.pitch -= (float)video_data[TEMP].key_data.mouse_y / 660 * 5;
+                gimbal_cmd_send.pitch_mode = PITCH_ON;
+            }
         }
     }
 

@@ -137,6 +137,11 @@ void gimbal_task()
         DJIMotorEnable(pitch_motor);
     }
 
+    if (gimbal_cmd_recv.pitch_mode == PITCH_OFF)
+        DJIMotorStop(pitch_motor);
+    else
+        DJIMotorEnable(pitch_motor);
+
     // LKMotorStop(yaw_motor);
     // DJIMotorStop(pitch_motor);
 

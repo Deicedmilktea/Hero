@@ -102,6 +102,12 @@ typedef enum
     GIMBAL_GYRO_MODE,      // 云台陀螺仪反馈模式,反馈值为陀螺仪pitch,total_yaw_angle,底盘可以为小陀螺和跟随模式
 } gimbal_mode_e;
 
+typedef enum
+{
+    PITCH_OFF = 0,
+    PITCH_ON,
+} pitch_mode_e;
+
 // 发射模式设置
 typedef enum
 {
@@ -201,6 +207,7 @@ typedef struct
     float yaw;
     float pitch;
     Robot_Status_e robot_status;
+    pitch_mode_e pitch_mode;
 } Gimbal_Ctrl_Cmd_s;
 
 // cmd发布的发射控制数据,由shoot订阅
