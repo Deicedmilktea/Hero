@@ -371,33 +371,34 @@ static void RemoteMouseKeySet()
     //     shoot_index = 0;
     // shoot_cmd_send.friction_mode = shoot_index;
 
-    // // 右键切换图传模式，normal，adaptive
-    // if (rc_data[TEMP].mouse.press_r)
-    // {
-    //     shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
-    //     chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
-    // }
-    // else
-    // {
-    //     shoot_cmd_send.video_mode = VIDEO_NORMAL;
-    //     chassis_cmd_send.video_mode = VIDEO_NORMAL;
-    // }
-
-    if (rc_data[TEMP].mouse.press_r && (last_right_button != rc_data[TEMP].mouse.press_r))
+    // b键切换图传模式，normal，adaptive
+    switch (rc_data[TEMP].key_count[KEY_PRESS][Key_B] % 2)
     {
-        if (right_button_counter % 2 == 1)
-        {
-            shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
-            chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
-        }
-        else
-        {
-            shoot_cmd_send.video_mode = VIDEO_NORMAL;
-            chassis_cmd_send.video_mode = VIDEO_NORMAL;
-        }
-        right_button_counter++;
+    case 1:
+        shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+        chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+        break;
+    default:
+        shoot_cmd_send.video_mode = VIDEO_NORMAL;
+        chassis_cmd_send.video_mode = VIDEO_NORMAL;
+        break;
     }
-    last_right_button = rc_data[TEMP].mouse.press_r;
+
+    // if (rc_data[TEMP].mouse.press_r && (last_right_button != rc_data[TEMP].mouse.press_r))
+    // {
+    //     if (right_button_counter % 2 == 1)
+    //     {
+    //         shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    //         chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    //     }
+    //     else
+    //     {
+    //         shoot_cmd_send.video_mode = VIDEO_NORMAL;
+    //         chassis_cmd_send.video_mode = VIDEO_NORMAL;
+    //     }
+    //     right_button_counter++;
+    // }
+    // last_right_button = rc_data[TEMP].mouse.press_r;
 
     // G键切换开镜模式
     switch (rc_data[TEMP].key_count[KEY_PRESS][Key_G] % 2)
@@ -569,33 +570,34 @@ static void VideoMouseKeySet()
         break;
     }
 
-    // // 右键切换图传模式，normal，adaptive
-    // if (video_data[TEMP].key_data.right_button_down) // 右键按下
-    // {
-    //     shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
-    //     chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
-    // }
-    // else
-    // {
-    //     shoot_cmd_send.video_mode = VIDEO_NORMAL;
-    //     chassis_cmd_send.video_mode = VIDEO_NORMAL;
-    // }
-
-    if (video_data[TEMP].key_data.right_button_down && (last_right_button != video_data[TEMP].key_data.right_button_down))
+    // b键切换图传模式，normal，adaptive
+    switch (video_data[TEMP].key_count[KEY_PRESS][Key_B] % 2)
     {
-        if (right_button_counter % 2 == 1)
-        {
-            shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
-            chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
-        }
-        else
-        {
-            shoot_cmd_send.video_mode = VIDEO_NORMAL;
-            chassis_cmd_send.video_mode = VIDEO_NORMAL;
-        }
-        right_button_counter++;
+    case 1:
+        shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+        chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+        break;
+    default:
+        shoot_cmd_send.video_mode = VIDEO_NORMAL;
+        chassis_cmd_send.video_mode = VIDEO_NORMAL;
+        break;
     }
-    last_right_button = video_data[TEMP].key_data.right_button_down;
+
+    // if (video_data[TEMP].key_data.right_button_down && (last_right_button != video_data[TEMP].key_data.right_button_down))
+    // {
+    //     if (right_button_counter % 2 == 1)
+    //     {
+    //         shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    //         chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    //     }
+    //     else
+    //     {
+    //         shoot_cmd_send.video_mode = VIDEO_NORMAL;
+    //         chassis_cmd_send.video_mode = VIDEO_NORMAL;
+    //     }
+    //     right_button_counter++;
+    // }
+    // last_right_button = video_data[TEMP].key_data.right_button_down;
 
     // G键切换开镜模式
     switch (video_data[TEMP].key_count[KEY_PRESS][Key_G] % 2)
