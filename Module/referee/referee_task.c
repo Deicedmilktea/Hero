@@ -135,37 +135,39 @@ void MyUIInit()
 
     // chassis
     if (Interactive_data->chassis_mode == CHASSIS_ZERO_FORCE)
-        UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 390, 750, "stop  ");
+        UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 390, 750, "stop  ");
     else if (Interactive_data->chassis_mode == CHASSIS_FOLLOW)
-        UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 390, 750, "follow");
+        UICharDraw(&UI_State_dyn[0], "sd0", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 390, 750, "follow");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[0]);
 
     // supcap
-    UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 360, 700, Interactive_data->supcap_mode == SUPCAP_OFF ? "off" : "on ");
+    UICharDraw(&UI_State_dyn[1], "sd1", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 360, 700, Interactive_data->supcap_mode == SUPCAP_OFF ? "off" : "on ");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[1]);
 
     // friction
-    if (Interactive_data->friction_mode == FRICTION_NORMAL)
-        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "normal");
-    else if (Interactive_data->friction_mode == FRICTION_LOW)
-        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "low   ");
-    else if (Interactive_data->friction_mode == FRICTION_HIGH)
-        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "high  ");
+    if (Interactive_data->friction_mode == FRICTION_1)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 650, "1   ");
+    else if (Interactive_data->friction_mode == FRICTION_2)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 650, "2   ");
+    else if (Interactive_data->friction_mode == FRICTION_3)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 650, "3   ");
+    else if (Interactive_data->friction_mode == FRICTION_4)
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 650, "4   ");
     else if (Interactive_data->friction_mode == FRICTION_STOP)
-        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "stop  ");
+        UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 650, "stop");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
 
     // loader
     if (Interactive_data->loader_mode == LOAD_SPEED)
-        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "speed ");
+        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 600, "speed ");
     else if (Interactive_data->loader_mode == LOAD_BUFF)
-        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "buff  ");
+        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 600, "buff  ");
     else
-        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 600, "normal");
+        UICharDraw(&UI_State_dyn[3], "sd3", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 600, "normal");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[3]);
 
     // video
-    UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 550, Interactive_data->video_mode == VIDEO_NORMAL ? "normal  " : "adaptive");
+    UICharDraw(&UI_State_dyn[4], "sd4", UI_Graph_ADD, 8, UI_Color_Yellow, 25, 4, 340, 550, Interactive_data->video_mode == VIDEO_NORMAL ? "normal  " : "adaptive");
     UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[4]);
 
     // 底盘功率显示，静态
@@ -222,26 +224,21 @@ static void MyUIRefresh(referee_info_t *referee_recv_info, Referee_Interactive_i
     {
         switch (_Interactive_data->friction_mode)
         {
-        case FRICTION_NORMAL:
-        {
-            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "normal");
+        case FRICTION_1:
+            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "1   ");
             break;
-        }
-        case FRICTION_LOW:
-        {
-            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "low   ");
+        case FRICTION_2:
+            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "2   ");
             break;
-        }
-        case FRICTION_HIGH:
-        {
-            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "high  ");
+        case FRICTION_3:
+            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "3   ");
             break;
-        }
+        case FRICTION_4:
+            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "4   ");
+            break;
         case FRICTION_STOP:
-        {
-            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "stop  ");
+            UICharDraw(&UI_State_dyn[2], "sd2", UI_Graph_Change, 8, UI_Color_Yellow, 25, 4, 340, 650, "stop");
             break;
-        }
         }
         UICharRefresh(&referee_recv_info->referee_id, UI_State_dyn[2]);
         _Interactive_data->Referee_Interactive_Flag.friction_flag = 0;

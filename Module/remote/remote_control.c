@@ -14,7 +14,6 @@ static RC_ctrl_t rc_ctrl[2];  //[0]:当前数据TEMP,[1]:上一次的数据LAST.
 uint8_t is_remote_online = 0; // 遥控器是否在线
 
 static uint8_t rc_init_flag = 0; // 遥控器初始化标志位
-static uint8_t temp_remote[8];   // 临时存储发送数据
 
 // 遥控器拥有的串口实例,因为遥控器是单例,所以这里只有一个,就不封装了
 static USART_Instance *rc_usart_instance;

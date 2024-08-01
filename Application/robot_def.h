@@ -18,8 +18,8 @@
 
 /* 开发板类型定义,烧录时注意不要弄错对应功能;修改定义后需要重新编译,只能存在一个定义! */
 // #define ONE_BOARD // 单板控制整车
-// #define CHASSIS_BOARD // 底盘板
-#define GIMBAL_BOARD // 云台板
+#define CHASSIS_BOARD // 底盘板
+// #define GIMBAL_BOARD // 云台板
 
 #define VISION_USE_VCP // 使用虚拟串口发送视觉数据
 // #define VISION_USE_UART // 使用串口发送视觉数据
@@ -40,7 +40,7 @@
 #define NUM_PER_CIRCLE 6             // 拨盘一圈的装载量
 #define SHOOT_DELAY 1000             // 发射后的延迟时间,单位ms
 #define TRIGGER_SINGLE_ANGLE 4260    // 单发拨盘转动的角度,71*60=4260
-#define LENS_THRESHOLD_CURRENT 1500  // 判断lens阈值电流
+#define LENS_THRESHOLD_CURRENT 3000  // 判断lens阈值电流
 #define LENS_PREPARE_SPEED 6000      // lens准备阶段速度
 #define LENS_MOVE_ANGLE 3300         // lens移动角度
 #define VIDEO_MOVE_ANGLE 5045        // video移动角度
@@ -117,9 +117,10 @@ typedef enum
 
 typedef enum
 {
-    FRICTION_NORMAL = 0, // 摩擦轮1档
-    FRICTION_LOW,
-    FRICTION_HIGH,
+    FRICTION_1 = 0, // 摩擦轮1档
+    FRICTION_2,
+    FRICTION_3,
+    FRICTION_4,
     FRICTION_STOP,
 } friction_mode_e;
 

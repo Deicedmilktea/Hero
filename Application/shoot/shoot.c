@@ -83,7 +83,7 @@ void shoot_init()
                 .Kd = 0,
                 .Improve = PID_Integral_Limit,
                 .IntegralLimit = 2000,
-                .MaxOut = 2000,
+                .MaxOut = 4000,
             },
             .angle_PID = {
                 .Kp = 20, // 20
@@ -156,20 +156,25 @@ void shoot_task()
         DJIMotorSetRef(friction_r, 0);
         DJIMotorSetRef(friction_up, 0);
         break;
-    case FRICTION_NORMAL:
-        DJIMotorSetRef(friction_l, FRICTION_SPEED_NORMAL);
-        DJIMotorSetRef(friction_r, FRICTION_SPEED_NORMAL);
-        DJIMotorSetRef(friction_up, FRICTION_SPEED_NORMAL);
+    case FRICTION_1:
+        DJIMotorSetRef(friction_l, FRICTION_SPEED_1);
+        DJIMotorSetRef(friction_r, FRICTION_SPEED_1);
+        DJIMotorSetRef(friction_up, FRICTION_SPEED_1);
         break;
-    case FRICTION_LOW:
-        DJIMotorSetRef(friction_l, FRICTION_SPEED_LOW);
-        DJIMotorSetRef(friction_r, FRICTION_SPEED_LOW);
-        DJIMotorSetRef(friction_up, FRICTION_SPEED_LOW);
+    case FRICTION_2:
+        DJIMotorSetRef(friction_l, FRICTION_SPEED_2);
+        DJIMotorSetRef(friction_r, FRICTION_SPEED_2);
+        DJIMotorSetRef(friction_up, FRICTION_SPEED_2);
         break;
-    case FRICTION_HIGH:
-        DJIMotorSetRef(friction_l, FRICTION_SPEED_HIGH);
-        DJIMotorSetRef(friction_r, FRICTION_SPEED_HIGH);
-        DJIMotorSetRef(friction_up, FRICTION_SPEED_HIGH);
+    case FRICTION_3:
+        DJIMotorSetRef(friction_l, FRICTION_SPEED_3);
+        DJIMotorSetRef(friction_r, FRICTION_SPEED_3);
+        DJIMotorSetRef(friction_up, FRICTION_SPEED_3);
+        break;
+    case FRICTION_4:
+        DJIMotorSetRef(friction_l, FRICTION_SPEED_4);
+        DJIMotorSetRef(friction_r, FRICTION_SPEED_4);
+        DJIMotorSetRef(friction_up, FRICTION_SPEED_4);
         break;
     }
 

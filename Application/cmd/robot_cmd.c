@@ -57,7 +57,8 @@ static int32_t chassis_speed_buff[10] = {30000, 32000, 34000, 36000, 38000, 4000
 static int32_t chassis_wz_max;                                                                                  // 底盘旋转速度最大值
 static int16_t chassis_wz_buff[2] = {6000, 8000};                                                               // 旋转速度
 static int32_t forward_speed, back_speed, left_speed, right_speed, wz_speed;                                    // 底盘速度
-static uint8_t shoot_index = 4;
+static uint8_t last_right_button = 0;
+static uint8_t right_button_counter = 0;
 
 static void CalcOffsetAngle();   // 计算云台偏转角度
 static void RemoteControlSet();  // 遥控器控制
@@ -181,12 +182,12 @@ static void RemoteControlSet()
     // 发射参数
     if (switch_is_mid(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[中],摩擦轮启动
     {
-        shoot_cmd_send.friction_mode = FRICTION_NORMAL;
+        shoot_cmd_send.friction_mode = FRICTION_4;
         chassis_cmd_send.loader_mode = LOAD_STOP;
     }
     else if (switch_is_up(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[上],发射
     {
-        shoot_cmd_send.friction_mode = FRICTION_NORMAL;
+        shoot_cmd_send.friction_mode = FRICTION_4;
         chassis_cmd_send.loader_mode = LOAD_SPEED;
     }
     else // 左侧开关状态[下],停止发射
@@ -336,19 +337,23 @@ static void RemoteMouseKeySet()
         chassis_cmd_send.loader_mode = LOAD_STOP;
 
     // E键切换摩擦轮速度
-    switch (rc_data[TEMP].key_count[KEY_PRESS][Key_E] % 4)
+    switch (rc_data[TEMP].key_count[KEY_PRESS][Key_E] % 5)
     {
     case 1:
-        shoot_cmd_send.friction_mode = FRICTION_NORMAL;
-        chassis_cmd_send.friction_mode = FRICTION_NORMAL;
+        shoot_cmd_send.friction_mode = FRICTION_4;
+        chassis_cmd_send.friction_mode = FRICTION_4;
         break;
     case 2:
-        shoot_cmd_send.friction_mode = FRICTION_LOW;
-        chassis_cmd_send.friction_mode = FRICTION_LOW;
+        shoot_cmd_send.friction_mode = FRICTION_3;
+        chassis_cmd_send.friction_mode = FRICTION_3;
         break;
     case 3:
-        shoot_cmd_send.friction_mode = FRICTION_HIGH;
-        chassis_cmd_send.friction_mode = FRICTION_HIGH;
+        shoot_cmd_send.friction_mode = FRICTION_2;
+        chassis_cmd_send.friction_mode = FRICTION_2;
+        break;
+    case 4:
+        shoot_cmd_send.friction_mode = FRICTION_1;
+        chassis_cmd_send.friction_mode = FRICTION_1;
         break;
     default:
         shoot_cmd_send.friction_mode = FRICTION_STOP;
@@ -366,18 +371,33 @@ static void RemoteMouseKeySet()
     //     shoot_index = 0;
     // shoot_cmd_send.friction_mode = shoot_index;
 
-    // B键切换图传模式，normal，adaptive
-    switch (rc_data[TEMP].key_count[KEY_PRESS][Key_B] % 2)
+    // // 右键切换图传模式，normal，adaptive
+    // if (rc_data[TEMP].mouse.press_r)
+    // {
+    //     shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    //     chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    // }
+    // else
+    // {
+    //     shoot_cmd_send.video_mode = VIDEO_NORMAL;
+    //     chassis_cmd_send.video_mode = VIDEO_NORMAL;
+    // }
+
+    if (rc_data[TEMP].mouse.press_r && (last_right_button != rc_data[TEMP].mouse.press_r))
     {
-    case 1:
-        shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
-        chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
-        break;
-    default:
-        shoot_cmd_send.video_mode = VIDEO_NORMAL;
-        chassis_cmd_send.video_mode = VIDEO_NORMAL;
-        break;
+        if (right_button_counter % 2 == 1)
+        {
+            shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+            chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+        }
+        else
+        {
+            shoot_cmd_send.video_mode = VIDEO_NORMAL;
+            chassis_cmd_send.video_mode = VIDEO_NORMAL;
+        }
+        right_button_counter++;
     }
+    last_right_button = rc_data[TEMP].mouse.press_r;
 
     // G键切换开镜模式
     switch (rc_data[TEMP].key_count[KEY_PRESS][Key_G] % 2)
@@ -525,19 +545,23 @@ static void VideoMouseKeySet()
         chassis_cmd_send.loader_mode = LOAD_STOP;
 
     // E键切换摩擦轮速度
-    switch (video_data[TEMP].key_count[KEY_PRESS][Key_E] % 4)
+    switch (video_data[TEMP].key_count[KEY_PRESS][Key_E] % 5)
     {
     case 1:
-        shoot_cmd_send.friction_mode = FRICTION_NORMAL;
-        chassis_cmd_send.friction_mode = FRICTION_NORMAL;
+        shoot_cmd_send.friction_mode = FRICTION_4;
+        chassis_cmd_send.friction_mode = FRICTION_4;
         break;
     case 2:
-        shoot_cmd_send.friction_mode = FRICTION_LOW;
-        chassis_cmd_send.friction_mode = FRICTION_LOW;
+        shoot_cmd_send.friction_mode = FRICTION_3;
+        chassis_cmd_send.friction_mode = FRICTION_3;
         break;
     case 3:
-        shoot_cmd_send.friction_mode = FRICTION_HIGH;
-        chassis_cmd_send.friction_mode = FRICTION_HIGH;
+        shoot_cmd_send.friction_mode = FRICTION_2;
+        chassis_cmd_send.friction_mode = FRICTION_2;
+        break;
+    case 4:
+        shoot_cmd_send.friction_mode = FRICTION_1;
+        chassis_cmd_send.friction_mode = FRICTION_1;
         break;
     default:
         shoot_cmd_send.friction_mode = FRICTION_STOP;
@@ -545,18 +569,33 @@ static void VideoMouseKeySet()
         break;
     }
 
-    // B键切换图传模式，normal，adaptive
-    switch (video_data[TEMP].key_count[KEY_PRESS][Key_B] % 2)
+    // // 右键切换图传模式，normal，adaptive
+    // if (video_data[TEMP].key_data.right_button_down) // 右键按下
+    // {
+    //     shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    //     chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+    // }
+    // else
+    // {
+    //     shoot_cmd_send.video_mode = VIDEO_NORMAL;
+    //     chassis_cmd_send.video_mode = VIDEO_NORMAL;
+    // }
+
+    if (video_data[TEMP].key_data.right_button_down && (last_right_button != video_data[TEMP].key_data.right_button_down))
     {
-    case 1:
-        shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
-        chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
-        break;
-    default:
-        shoot_cmd_send.video_mode = VIDEO_NORMAL;
-        chassis_cmd_send.video_mode = VIDEO_NORMAL;
-        break;
+        if (right_button_counter % 2 == 1)
+        {
+            shoot_cmd_send.video_mode = VIDEO_ADAPTIVE;
+            chassis_cmd_send.video_mode = VIDEO_ADAPTIVE;
+        }
+        else
+        {
+            shoot_cmd_send.video_mode = VIDEO_NORMAL;
+            chassis_cmd_send.video_mode = VIDEO_NORMAL;
+        }
+        right_button_counter++;
     }
+    last_right_button = video_data[TEMP].key_data.right_button_down;
 
     // G键切换开镜模式
     switch (video_data[TEMP].key_count[KEY_PRESS][Key_G] % 2)
@@ -604,12 +643,12 @@ static void VisionControlSet()
     }
     else if (switch_is_mid(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[中],摩擦轮启动
     {
-        shoot_cmd_send.friction_mode = FRICTION_NORMAL;
+        shoot_cmd_send.friction_mode = FRICTION_4;
         chassis_cmd_send.loader_mode = LOAD_STOP;
     }
     else if (switch_is_up(rc_data[TEMP].rc.switch_left)) // 左侧开关状态[上],发射
     {
-        shoot_cmd_send.friction_mode = FRICTION_NORMAL;
+        shoot_cmd_send.friction_mode = FRICTION_4;
         chassis_cmd_send.loader_mode = LOAD_STOP;
     }
 }
@@ -632,6 +671,9 @@ static void limit_gimbal()
  */
 static void lens_prepare()
 {
+    if (rc_data[TEMP].key[KEY_PRESS].v || video_data[TEMP].key[KEY_PRESS].v)
+        is_lens_ready = 0;
+
     if (!is_lens_ready)
     {
         shoot_cmd_send.lens_judge_mode = LENS_MODE_SPEED;
